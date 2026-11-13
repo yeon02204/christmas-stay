@@ -15,6 +15,7 @@
 | 홈 | 숙소 카드(대표사진·유형·지역·객실 수·최저가/가격 미입력), 숙소명 검색, **숙소 유형·지역 칩 필터**(개수 표시, 함께 조합), 가격순·최근순 정렬, 찜한 객실만, 카드에서 바로 찜·비교 담기, 빈 화면 |
 | 숙소 등록/수정 | 숙소명만 필수, 숙소 유형(글램핑·풀빌라·카라반·캠핑·펜션·호텔·복합·기타), 대표사진(URL/업로드), 저장하면 바로 객실 추가로 이동, 삭제(영향 범위 확인창) |
 | 숙소 일괄 등록 | JSON(ChatGPT 답변 그대로 가능)으로 숙소 여러 개 + 객실·날짜별 가격·추가금·시설·분위기·사진 URL·예약 링크 한 번에 등록, 저장 전 미리보기, 오류 위치 표시(숙소 › 객실 › 항목), 같은 이름 숙소 중복 등록 차단(저장 직전 재확인), 숙소 단위 실패 시 해당 숙소만 되돌림 |
+| 예약 링크 일괄 업데이트 | 데이터 화면에서 진입. `[{ stayName, bookingUrl }]` JSON(붙여넣기/파일)으로 **이미 등록된 숙소의 예약 링크만** 변경. 숙소명 정확히 일치(공백·대소문자 무시)만 반영, 새 숙소 생성 안 함, 숙소의 모든 객실에 같은 링크. 저장 전 미리보기(기존→새 링크), 이름 불일치(비슷한 이름 후보)·중복 매칭·잘못된 항목은 자동 수정 안 하고 따로 표시, 성공/실패 건수 |
 | 객실 등록/수정 | 객실명만 필수, **날짜 구간별** 숙박비·예약 가능 여부·확인일, 다른 날짜 가격 복사(예약 여부는 ‘확인 전’으로), 추가금(공통 기본값 + 날짜별 금액, 필수/선택), 총비용 미리보기, 사진 여러 장(URL 여러 줄 붙여넣기·파일·드래그·Ctrl+V), 시설 14종 3단계, 분위기 4항목, 이용 정보, **저장하고 다음 객실** |
 | 숙소 상세 | 대표사진, 주소 복사, 홈페이지, 메모, 객실 카드(사진 갤러리·가격·예약 여부·주요 시설·평가) |
 | 객실 상세 | 사진 갤러리(스와이프·키보드·썸네일), 총비용 계산기, 시설·분위기·이용 정보, 날짜별 가격표, 내 평가 5항목 / 상대 평가 |
@@ -66,8 +67,8 @@ docs/          SETUP.md(설정 가이드), DATABASE.md(DB·RLS·API 명세)
 | 종류 | 방법 | 결과 (2026-11-14) |
 |---|---|---|
 | 빌드 | `npm run build` | ✅ 성공 |
-| 단위 테스트 | `npm test` (총비용 계산, 금액 입력, 평가 요약, 백업 검증) | ✅ 33/33 (일괄 등록 JSON 검사·되돌리기, 숙소 유형 포함) |
-| DB·RLS | 로컬 PostgreSQL 16 + Supabase 대역 스키마에 마이그레이션 적용 → `supabase/tests/10·30·40_*.sql` | ✅ 21 + 4 + 3 (멤버 A/B/비멤버/anon 권한, 제약조건, cascade, 충돌 감지, 백업 복원, members 컬럼 권한, 추가금 보존, 권한 매트릭스, 숙소 유형). 마이그레이션 2회 연속 실행·기존 데이터 위에 실행해도 데이터 유지 |
+| 단위 테스트 | `npm test` (총비용 계산, 금액 입력, 평가 요약, 백업 검증) | ✅ 45/45 (일괄 등록 JSON 검사·되돌리기·주소 중복, 숙소 유형, 예약 링크 매칭 포함) |
+| DB·RLS | 로컬 PostgreSQL 16 + Supabase 대역 스키마에 마이그레이션 적용 → `supabase/tests/10·30·40·50_*.sql` | ✅ 21 + 4 + 3 + 3 (예약 링크 함수가 링크 외 데이터 0건 변경, 멤버 A/B/비멤버/anon 권한, 제약조건, cascade, 충돌 감지, 백업 복원, members 컬럼 권한, 추가금 보존, 권한 매트릭스, 숙소 유형). 마이그레이션 2회 연속 실행·기존 데이터 위에 실행해도 데이터 유지 |
 | E2E | 로컬 PostgreSQL + `scripts/mock-supabase`(실제 supabase-js 로 호출) + 크롬 → `scripts/e2e/e2e_test.py` | ✅ 23/23 시나리오 (PC 1280px · 모바일 390px, 두 사용자) |
 
 ### 미검증 (외부 연결 정보가 없어 확인하지 못한 부분)
@@ -82,8 +83,8 @@ docs/          SETUP.md(설정 가이드), DATABASE.md(DB·RLS·API 명세)
 
 ```bash
 createdb cs_test
-psql -d cs_test -f supabase/tests/00_local_supabase_stub.sql -f supabase/migrations/20261113000000_init.sql -f supabase/migrations/20261114000000_stay_type.sql
-psql -d cs_test -f supabase/tests/10_rls_and_rpc_test.sql -f supabase/tests/30_hardening_test.sql -f supabase/tests/40_stay_type_test.sql   # DB 테스트
+psql -d cs_test -f supabase/tests/00_local_supabase_stub.sql -f supabase/migrations/20261113000000_init.sql -f supabase/migrations/20261114000000_stay_type.sql -f supabase/migrations/20261114010000_booking_link_update.sql
+psql -d cs_test -f supabase/tests/10_rls_and_rpc_test.sql -f supabase/tests/30_hardening_test.sql -f supabase/tests/40_stay_type_test.sql -f supabase/tests/20_reset_test_data.sql -f supabase/tests/50_booking_link_test.sql   # DB 테스트
 psql -d cs_test -f supabase/tests/20_reset_test_data.sql       # 테스트 계정 준비
 DATABASE_URL=postgres://... npm run mock:supabase              # :54321
 VITE_SUPABASE_URL=http://localhost:54321 VITE_SUPABASE_PUBLISHABLE_KEY=local npm run dev

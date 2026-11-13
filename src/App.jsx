@@ -33,6 +33,7 @@ const router = createBrowserRouter([
       { path: 'stays/new', element: <StayFormPage /> },
       // 자주 쓰지 않는 화면이라 열 때만 불러온다 (첫 화면 번들 크기 유지)
       { path: 'stays/import', lazy: () => import('./pages/BulkImportPage.jsx').then((m) => ({ Component: m.default })) },
+      { path: 'stays/booking-links', lazy: () => import('./pages/BookingLinksPage.jsx').then((m) => ({ Component: m.default })) },
       { path: 'stays/:stayId', element: <StayDetailPage /> },
       { path: 'stays/:stayId/edit', element: <StayFormPage /> },
       { path: 'stays/:stayId/rooms/new', element: <RoomFormPage /> },

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { CloudUpload, Download, FileJson, Info, LogOut, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { CloudUpload, Download, FileJson, Info, Link2, LogOut, Users } from 'lucide-react'
 import ConfirmDialog from '../components/common/ConfirmDialog.jsx'
 import { useToast } from '../components/common/Toast.jsx'
 import { useStore } from '../store/AppStore.jsx'
@@ -130,6 +131,14 @@ export default function DataPage() {
           )}
         </div>
         {!legacy && <p className="mt-3 text-xs text-muted">이 브라우저에는 이전 버전(localStorage) 데이터가 없어.</p>}
+      </section>
+
+      <section className="card p-6">
+        <h2 className="section-title flex items-center gap-2"><Link2 className="size-5 text-gold" aria-hidden /> 예약 링크 일괄 업데이트</h2>
+        <p className="mt-2 text-sm text-muted">숙소 이름과 예약 링크가 담긴 JSON 으로, 이미 등록된 숙소의 예약 링크만 한 번에 바꿔. 다른 정보는 그대로야.</p>
+        <Link to="/stays/booking-links" className="btn-outline mt-4">
+          <Link2 className="size-4" aria-hidden /> 예약 링크 업데이트하기
+        </Link>
       </section>
 
       <section className="rounded-3xl border border-line p-5 text-xs leading-relaxed text-muted">

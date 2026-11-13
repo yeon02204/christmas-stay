@@ -1,6 +1,6 @@
 # 데이터 구조 · API 명세
 
-SQL 은 `supabase/migrations/` 에 날짜 순서로 있어: `20261113000000_init.sql`(전체 스키마) → `20261114000000_stay_type.sql`(숙소 유형).
+SQL 은 `supabase/migrations/` 에 날짜 순서로 있어: `20261113000000_init.sql`(전체 스키마) → `20261114000000_stay_type.sql`(숙소 유형) → `20261114010000_booking_link_update.sql`(예약 링크만 바꾸는 함수).
 
 ## 1. 테이블
 
@@ -68,6 +68,7 @@ compare_extra_selections (user_id, extra_id)     ← 비교 화면에서 선택�
 | `delete_stay` | `p_stay_id` | `{ removedPaths }` | 객실·가격·찜·평가·비교 cascade |
 | `save_room` | `p: Room` | `{ room, extraIdMap, removedPaths }` | 기본정보+사진+추가금+시설+분위기+날짜별 가격 일괄 저장 |
 | `delete_room` | `p_room_id` | `{ removedPaths }` | |
+| `set_stay_booking_link` | `p_stay_id, p_url, p_only_empty` | `{ rooms, updated }` | 숙소의 모든 객실 예약 링크(`rooms.booking_url`)만 변경. 다른 칸·테이블은 그대로. version 증가로 열린 수정 화면은 충돌 감지 |
 | `update_room_notes` | `p_room_id, p_pros, p_cons` | – | 비교 화면 장단점 (공유) |
 | `set_favorite` | `p_room_id, p_on` | – | 내 찜 |
 | `update_favorite_memo` | `p_room_id, p_memo` | – | |

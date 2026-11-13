@@ -47,7 +47,7 @@ export default function BulkImportPage() {
   const errorCount = items.reduce((n, it) => n + it.errors.length, 0)
 
   function check(textValue = input) {
-    const res = parseBulkInput(textValue, state.stays.map((s) => s.name))
+    const res = parseBulkInput(textValue, state.stays)
     setParsed(res)
     setResults(null)
     // 오류 없는 숙소만 기본 선택. 이미 같은 이름이 있으면 기본 해제
@@ -295,7 +295,7 @@ function StayPreview({ item, checked, onToggle, disabled, result }) {
             </label>
             {STAY_TYPE_LABEL[stay.stayType] && <span className="chip bg-pine-soft text-pine">{STAY_TYPE_LABEL[stay.stayType]}</span>}
             {stay.region && <span className="chip bg-gold-soft text-ink">{stay.region}</span>}
-            {duplicate && <span className="chip bg-burgundy-soft text-burgundy">이미 있는 이름</span>}
+            {duplicate && <span className="chip bg-burgundy-soft text-burgundy">중복</span>}
             {hasError && <span className="chip bg-burgundy text-white">오류 {errors.length}건</span>}
             <ResultChip result={result} />
           </div>

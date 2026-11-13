@@ -6,10 +6,9 @@
 // 단, 로그인 만료·권한 없음이면 나머지도 모두 실패할 테니 거기서 멈춘다.
 
 import { api as defaultApi } from './api.js'
-import { stayNameKey } from '../utils/bulkImport.js'
+import { addressKey, buildExistingIndex, stayNameKey } from '../utils/bulkImport.js'
 
 const STOP_KINDS = new Set(['auth', 'forbidden'])
-const DUPLICATE_MSG = '같은 이름의 숙소가 이미 있어서 건너뛰었어 (중복 등록 방지)'
 
 /**
  * @param {Array<{ stay, rooms }>} items   parseBulkInput 결과 중 등록할 것
@@ -20,10 +19,10 @@ export async function runBulkImport(items, { api = defaultApi, onProgress } = {}
   const results = []
   let stopped = null
   // 중복 등록 방지: 미리보기 이후에 상대가 같은 숙소를 등록했을 수도 있으니 저장 직전에 최신 목록을 다시 읽는다
-  const existing = new Set()
+  let existing
   try {
     const fresh = await api.getState()
-    for (const s of fresh?.stays ?? []) existing.add(stayNameKey(s.name))
+    existing = buildExistingIndex(fresh?.stays ?? [])
   } catch (err) {
     return items.map(({ stay }) => ({ name: stay.name, status: 'skipped', error: `최신 숙소 목록을 확인하지 못해서 시작하지 않았어: ${err?.message || err}` }))
   }
@@ -34,8 +33,15 @@ export async function runBulkImport(items, { api = defaultApi, onProgress } = {}
       results.push({ name, status: 'skipped', error: stopped })
       continue
     }
-    if (existing.has(stayNameKey(name))) {
-      results.push({ name, status: 'skipped', error: DUPLICATE_MSG, duplicate: true })
+    const nameKey = stayNameKey(name)
+    const addrKey = addressKey(stay.address)
+    if (existing.names.has(nameKey)) {
+      results.push({ name, status: 'skipped', duplicate: true, error: '같은 이름의 숙소가 이미 있어서 건너뛰었어 (중복 등록 방지)' })
+      continue
+    }
+    if (addrKey && existing.addresses.has(addrKey)) {
+      const other = existing.addresses.get(addrKey)
+      results.push({ name, status: 'skipped', duplicate: true, error: `"${other}" 숙소와 주소가 같아서 건너뛰었어 (중복 등록 방지)` })
       continue
     }
     onProgress?.({ index: i, total: items.length, name, step: '숙소 저장' })
@@ -49,7 +55,8 @@ export async function runBulkImport(items, { api = defaultApi, onProgress } = {}
         onProgress?.({ index: i, total: items.length, name, step: `객실 ${r + 1}/${rooms.length} 저장` })
         await api.saveRoom({ ...rooms[r], id: '', version: null, stayId })
       }
-      existing.add(stayNameKey(name))
+      existing.names.set(nameKey, name)
+      if (addrKey) existing.addresses.set(addrKey, name)
       results.push({ name, status: 'ok', stayId, rooms: rooms.length })
     } catch (err) {
       const result = { name, status: 'failed', error: err?.message || String(err), failedRoom: stayId ? failedRoom : null }

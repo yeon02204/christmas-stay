@@ -28,8 +28,34 @@ const EXTRA_KEYS = new Set(['id', 'kind', 'name', 'defaultPrice', 'required'])
 const RATE_KEYS = new Set(['checkIn', 'checkOut', 'roomPrice', 'availability', 'checkedAt', 'extraPrices'])
 
 const squash = (s) => String(s).replace(/\s+/g, '').toLowerCase()
-/** 숙소 중복 판단 기준: 이름에서 공백을 빼고 대소문자를 무시한다 */
+/** 숙소 중복 판단 기준 ①: 이름에서 공백을 빼고 대소문자를 무시한다 */
 export const stayNameKey = squash
+
+// 시·도 이름은 긴 이름/줄임말 어느 쪽으로 써도 같게 본다 (긴 이름을 먼저 검사)
+const PROVINCES = [
+  ['서울특별시', '서울'], ['서울시', '서울'], ['부산광역시', '부산'], ['대구광역시', '대구'], ['인천광역시', '인천'],
+  ['광주광역시', '광주'], ['대전광역시', '대전'], ['울산광역시', '울산'], ['세종특별자치시', '세종'], ['세종시', '세종'],
+  ['경기도', '경기'], ['강원특별자치도', '강원'], ['강원도', '강원'], ['충청북도', '충북'], ['충청남도', '충남'],
+  ['전북특별자치도', '전북'], ['전라북도', '전북'], ['전라남도', '전남'], ['경상북도', '경북'], ['경상남도', '경남'],
+  ['제주특별자치도', '제주'], ['제주도', '제주'],
+]
+
+/**
+ * 숙소 중복 판단 기준 ②: 주소.
+ * 표기 차이(시·도 긴 이름/줄임말, 띄어쓰기, 쉼표, 괄호 안 동네 이름·우편번호, '번지')는 무시하고 비교한다.
+ * 번지·도로명 번호(숫자)가 없는 주소(예: "가평군")는 같은 장소라고 볼 수 없으니 비교하지 않는다 → ''.
+ */
+export function addressKey(address) {
+  let s = String(address ?? '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim()
+  for (const [full, short] of PROVINCES) {
+    if (s.startsWith(full)) {
+      s = short + s.slice(full.length)
+      break
+    }
+  }
+  s = s.replace(/번지/g, '').replace(/[\s,.·]/g, '').toLowerCase()
+  return /\d/.test(s) ? s : ''
+}
 
 const FACILITY_VALUE = new Map([
   ...['yes', '있음', '있어', 'o', '가능', 'true'].map((v) => [v, 'yes']),
@@ -379,7 +405,7 @@ function parseRoom(raw, ctx) {
 
 // ───────────── 숙소 ─────────────
 
-function parseStay(raw, index, existingNames) {
+function parseStay(raw, index, existing) {
   const label = typeof raw?.name === 'string' && raw.name.trim() ? `"${raw.name.trim().slice(0, 30)}"` : ''
   const path = `숙소 ${index + 1}${label ? ` ${label}` : ''}`
   const errors = []
@@ -425,19 +451,36 @@ function parseStay(raw, index, existingNames) {
       rooms.push(room)
     })
   }
-  // 중복 등록 방지: 이미 같은 이름(공백·대소문자 무시)의 숙소가 있으면 등록할 수 없게 막는다
-  const duplicate = !!stay.name && existingNames.has(stayNameKey(stay.name))
-  if (duplicate)
+  // 중복 등록 방지: 이미 등록된 숙소와 이름 또는 주소가 같으면 등록할 수 없게 막는다
+  const nameHit = stay.name ? existing.names.get(stayNameKey(stay.name)) : undefined
+  const addrHit = existing.addresses.get(addressKey(stay.address))
+  if (nameHit !== undefined)
     errors.push(`${path}: 같은 이름의 숙소가 이미 등록돼 있어 (중복 등록 방지). 새 객실은 기존 숙소 화면에서 추가해 줘`)
+  else if (addrHit !== undefined)
+    errors.push(`${path}.address: 이미 등록된 "${addrHit}" 숙소와 주소가 같아 (중복 등록 방지). 같은 곳이면 기존 숙소에 객실을 추가해 줘`)
+  const duplicate = nameHit !== undefined || addrHit !== undefined
   return { index, path, stay, rooms, errors, warnings, duplicate }
 }
 
 /**
  * 붙여넣은 JSON 전체를 검사한다.
  * 입력: { "stays": [ ... ] } 또는 [ ... ] 또는 숙소 하나 { ... }
+ * existingStays: 이미 등록된 숙소 [{ name, address }] (이름 문자열 배열도 받음)
  * 반환: { error } (전체 형식 오류) 또는 { items: [{ stay, rooms, errors, warnings, duplicate }] }
  */
-export function parseBulkInput(textValue, existingStayNames = []) {
+export function buildExistingIndex(existingStays = []) {
+  const names = new Map()
+  const addresses = new Map()
+  for (const s of existingStays) {
+    const st = typeof s === 'string' ? { name: s } : s || {}
+    if (st.name) names.set(stayNameKey(st.name), st.name)
+    const a = addressKey(st.address)
+    if (a) addresses.set(a, st.name || '이름 없음')
+  }
+  return { names, addresses }
+}
+
+export function parseBulkInput(textValue, existingStays = []) {
   const parsed = parseJsonText(textValue)
   if (parsed.error) return { error: parsed.error }
   const v = parsed.value
@@ -449,18 +492,23 @@ export function parseBulkInput(textValue, existingStayNames = []) {
   if (list.length === 0) return { error: 'stays 배열이 비어 있어' }
   if (list.length > BULK_LIMITS.stays) return { error: `한 번에 최대 ${BULK_LIMITS.stays}개 숙소까지 등록할 수 있어 (지금 ${list.length}개)` }
 
-  const existing = new Set(existingStayNames.filter(Boolean).map(stayNameKey))
+  const existing = buildExistingIndex(existingStays)
   const items = list.map((raw, i) => parseStay(raw, i, existing))
-  // 붙여넣은 목록 안에서의 중복 이름 → 두 번째부터 등록 불가
-  const seen = new Map()
+  // 붙여넣은 목록 안에서의 중복 이름·주소 → 두 번째부터 등록 불가
+  const seenName = new Map()
+  const seenAddr = new Map()
   for (const it of items) {
-    if (!it.stay.name) continue
-    const k = stayNameKey(it.stay.name)
-    if (seen.has(k)) {
+    const n = it.stay.name ? stayNameKey(it.stay.name) : ''
+    const a = addressKey(it.stay.address)
+    if (n && seenName.has(n)) {
       it.duplicate = true
-      it.errors.push(`${it.path}: ${seen.get(k) + 1}번째 숙소와 이름이 같아 (중복 등록 방지). 하나로 합쳐 줘`)
+      it.errors.push(`${it.path}: ${seenName.get(n) + 1}번째 숙소와 이름이 같아 (중복 등록 방지). 하나로 합쳐 줘`)
+    } else if (a && seenAddr.has(a)) {
+      it.duplicate = true
+      it.errors.push(`${it.path}.address: ${seenAddr.get(a) + 1}번째 숙소와 주소가 같아 (중복 등록 방지). 하나로 합쳐 줘`)
     }
-    else seen.set(k, it.index)
+    if (n && !seenName.has(n)) seenName.set(n, it.index)
+    if (a && !seenAddr.has(a)) seenAddr.set(a, it.index)
   }
   return { items }
 }

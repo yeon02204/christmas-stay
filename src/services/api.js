@@ -56,6 +56,9 @@ export const api = {
   saveRoom: (room) => rpc('save_room', { p: room }),
   deleteRoom: (roomId) => rpc('delete_room', { p_room_id: roomId }),
   updateRoomNotes: (roomId, pros, cons) => rpc('update_room_notes', { p_room_id: roomId, p_pros: pros, p_cons: cons }),
+  /** 숙소의 모든 객실 예약 링크만 바꾼다 (다른 데이터는 그대로). onlyEmpty: 링크가 빈 객실만 */
+  setStayBookingLink: (stayId, url, onlyEmpty = false) =>
+    rpc('set_stay_booking_link', { p_stay_id: stayId, p_url: url, p_only_empty: onlyEmpty }),
 
   setFavorite: (roomId, on) => rpc('set_favorite', { p_room_id: roomId, p_on: on }),
   updateFavoriteMemo: (roomId, memo) => rpc('update_favorite_memo', { p_room_id: roomId, p_memo: memo }),

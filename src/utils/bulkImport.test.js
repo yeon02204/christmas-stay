@@ -214,3 +214,47 @@ describe('일괄 등록: 숙소 유형', () => {
     expect(parse1({ name: 'x', stayType: '모텔' }).errors.join()).toMatch(/stayType: "모텔" 는 알 수 없는 값/)
   })
 })
+
+describe('일괄 등록: 주소 중복 방지', () => {
+  it('주소 표기 차이(시·도 줄임말, 띄어쓰기, 괄호, 번지)는 같은 주소로 본다', async () => {
+    const { addressKey } = await import('./bulkImport.js')
+    const a = addressKey('경기도 가평군 상면 임초밤안골로 123 (상면)')
+    expect(a).toBe(addressKey('경기 가평군 상면 임초밤안골로123'))
+    expect(addressKey('강원특별자치도 홍천군 서면 100번지')).toBe(addressKey('강원도 홍천군 서면 100'))
+    expect(a).not.toBe(addressKey('경기 가평군 상면 임초밤안골로 124'))
+    expect(addressKey('가평군')).toBe('') // 번지 없는 주소는 비교하지 않음
+    expect(addressKey('')).toBe('')
+  })
+
+  it('이미 등록된 숙소와 주소가 같으면 이름이 달라도 막는다', () => {
+    const it0 = parse1({ name: '별빛 글램핑 가평점', address: '경기 가평군 상면 100' }, [{ name: '별빛 글램핑', address: '경기도 가평군 상면 100' }])
+    expect(it0.duplicate).toBe(true)
+    expect(it0.errors.join()).toMatch(/\.address: 이미 등록된 "별빛 글램핑" 숙소와 주소가 같아/)
+  })
+
+  it('지역만 같거나 주소가 비어 있으면 막지 않는다', () => {
+    expect(parse1({ name: 'X', address: '경기 가평군' }, [{ name: 'Y', address: '경기 가평군' }]).errors).toEqual([])
+    expect(parse1({ name: 'X' }, [{ name: 'Y', address: '' }]).errors).toEqual([])
+  })
+
+  it('붙여넣은 목록 안에서 주소가 같은 숙소도 막는다', () => {
+    const r = parseBulkInput(JSON.stringify({ stays: [{ name: 'A', address: '서울특별시 중구 세종대로 1' }, { name: 'B', address: '서울 중구 세종대로1' }] }))
+    expect(r.items[0].errors).toEqual([])
+    expect(r.items[1].errors.join()).toMatch(/1번째 숙소와 주소가 같아/)
+  })
+
+  it('저장 직전 재확인: 미리보기 뒤에 같은 주소로 등록된 숙소는 건너뛴다', async () => {
+    const saved = []
+    const api = {
+      getState: async () => ({ stays: [{ name: '먼저 등록', address: '경기도 양평군 100' }] }),
+      saveStay: async (s) => (saved.push(s.name), { stay: { id: `s${saved.length}` } }),
+      saveRoom: async () => ({}),
+      deleteStay: async () => ({}),
+    }
+    const list = parseBulkInput(JSON.stringify({ stays: [{ name: '새 숙소', address: '경기 양평군 100' }, { name: '다른 숙소', address: '경기 양평군 200' }] })).items
+    const res = await runBulkImport(list, { api })
+    expect(res.map((x) => x.status)).toEqual(['skipped', 'ok'])
+    expect(res[0].error).toMatch(/"먼저 등록" 숙소와 주소가 같아서 건너뛰었어/)
+    expect(saved).toEqual(['다른 숙소'])
+  })
+})
