@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "bradlc.vscode-tailwindcss",
+    "oxc.oxc-vscode",
+    "esbenp.prettier-vscode",
+    "supabase.vscode-supabase-extension",
+    "mikestead.dotenv",
+    "anthropic.claude-code"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "1. 패키지 설치 (npm install)", "type": "shell", "command": "npm install", "problemMatcher": [] },
+    {
+      "label": "2. 개발 서버 실행 (npm run dev)",
+      "type": "shell",
+      "command": "npm run dev",
+      "isBackground": true,
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^x^" },
+        "background": { "activelyMatches": true, "beginsPattern": "VITE", "endsPattern": "Local:" }
+      }
+    },
+    { "label": "3. 빌드 확인 (npm run build)", "type": "shell", "command": "npm run build", "problemMatcher": [] },
+    { "label": "4. 단위 테스트 (npm test)", "type": "shell", "command": "npm test", "problemMatcher": [] }
+  ]
+}

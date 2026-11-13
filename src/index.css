@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #FAF7F2;
+  --color-cream-deep: #F2EBE0;
+  --color-line: #E8DFD2;
+  --color-burgundy: #8B2635;
+  --color-burgundy-deep: #6E1D2A;
+  --color-burgundy-soft: #F6E8EA;
+  --color-pine: #315747;
+  --color-pine-soft: #E6EFEA;
+  --color-gold: #C4A46B;
+  --color-gold-soft: #F6EEDF;
+  --color-ink: #2D2926;
+  --color-muted: #7A716A;
+
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  --font-serif: "Gowun Batang", "Nanum Myeongjo", "AppleMyungjo", serif;
+
+  --shadow-soft: 0 1px 2px rgb(45 41 38 / 0.04), 0 6px 20px rgb(45 41 38 / 0.06);
+  --shadow-lift: 0 2px 4px rgb(45 41 38 / 0.05), 0 14px 32px rgb(45 41 38 / 0.10);
+
+  --animate-fade-up: fade-up 0.35s ease-out both;
+  --animate-snow: snow 9s linear infinite;
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes snow {
+    from { transform: translateY(-10%); opacity: 0; }
+    10% { opacity: 0.9; }
+    to { transform: translateY(110%); opacity: 0; }
+  }
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    @apply bg-cream text-ink font-sans antialiased;
+    word-break: keep-all;
+  }
+  :focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; border-radius: 6px; }
+  input, textarea, select, button { font: inherit; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+}
+
+@utility card {
+  @apply rounded-3xl bg-white shadow-soft;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold
+      transition-colors disabled:cursor-not-allowed disabled:opacity-50 min-h-11 whitespace-nowrap;
+}
+@utility btn-primary {
+  @apply btn bg-burgundy text-white hover:bg-burgundy-deep;
+}
+@utility btn-pine {
+  @apply btn bg-pine text-white hover:brightness-110;
+}
+@utility btn-outline {
+  @apply btn border border-line bg-white text-ink hover:border-gold hover:bg-gold-soft;
+}
+@utility btn-ghost {
+  @apply btn text-muted hover:bg-cream-deep hover:text-ink;
+}
+@utility btn-danger {
+  @apply btn bg-white text-burgundy border border-burgundy/30 hover:bg-burgundy-soft;
+}
+@utility btn-sm {
+  @apply min-h-9 px-3 py-1.5 text-[13px];
+}
+@utility icon-btn {
+  @apply inline-flex size-10 items-center justify-center rounded-full transition-colors
+      hover:bg-cream-deep disabled:opacity-40;
+}
+@utility field-label {
+  @apply mb-1.5 block text-[13px] font-semibold text-ink/80;
+}
+@utility input {
+  @apply w-full rounded-2xl border border-line bg-white px-3.5 py-2.5 text-[15px] text-ink
+      placeholder:text-muted/60 transition-colors focus:border-gold focus:outline-none focus:ring-3 focus:ring-gold/20;
+}
+@utility input-error {
+  @apply border-burgundy/60 focus:border-burgundy focus:ring-burgundy/15;
+}
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
+}
+@utility section-title {
+  @apply font-serif text-lg font-bold text-ink;
+}
+@utility muted-na {
+  @apply text-muted/80 italic;
+}
+
+.scrollbar-thin { scrollbar-width: thin; }

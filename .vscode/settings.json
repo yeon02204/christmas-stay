@@ -1,0 +1,12 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.tabSize": 2,
+  "files.eol": "\n",
+  "files.associations": { "*.css": "tailwindcss" },
+  "tailwindCSS.experimental.configFile": "src/index.css",
+  "editor.quickSuggestions": { "strings": "on" },
+  "search.exclude": { "dist": true, ".mock-storage": true },
+  "[sql]": { "editor.formatOnSave": false },
+  "[python]": { "editor.formatOnSave": false }
+}
