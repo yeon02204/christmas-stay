@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { GitCompareArrows, Heart, Plus, Search, SearchX, Tent } from 'lucide-react'
+import { FileJson, GitCompareArrows, Heart, Plus, Search, SearchX, Tent } from 'lucide-react'
 import EmptyState from '../components/common/EmptyState.jsx'
 import StayCard from '../components/stay/StayCard.jsx'
 import { useDerived, useStore } from '../store/AppStore.jsx'
@@ -61,9 +61,14 @@ export default function HomePage() {
             <h1 className="mt-2 font-serif text-3xl font-bold leading-snug md:text-4xl">우리의 겨울 여행을 찾아서 ❄️</h1>
             <p className="mt-2 text-white/80">어떤 곳에서 크리스마스를 보낼까?</p>
           </div>
-          <Link to="/stays/new" className="btn self-start bg-white text-burgundy hover:bg-gold-soft md:self-auto">
-            <Plus className="size-4" aria-hidden /> 숙소 등록
-          </Link>
+          <div className="flex flex-wrap gap-2 self-start md:self-auto">
+            <Link to="/stays/new" className="btn bg-white text-burgundy hover:bg-gold-soft">
+              <Plus className="size-4" aria-hidden /> 숙소 등록
+            </Link>
+            <Link to="/stays/import" className="btn border border-white/40 text-white hover:bg-white/10">
+              <FileJson className="size-4" aria-hidden /> JSON 일괄 등록
+            </Link>
+          </div>
         </div>
         <div className="relative mt-7 grid grid-cols-3 gap-2 md:max-w-lg">
           <Stat label="숙소 후보" value={state.stays.length} icon={Tent} />
@@ -78,9 +83,14 @@ export default function HomePage() {
           title="아직 등록된 숙소가 없어!"
           description="마음에 드는 글램핑 숙소를 하나씩 추가해 보자."
           action={
-            <Link to="/stays/new" className="btn-primary">
-              <Plus className="size-4" aria-hidden /> 숙소 등록
-            </Link>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link to="/stays/new" className="btn-primary">
+                <Plus className="size-4" aria-hidden /> 숙소 등록
+              </Link>
+              <Link to="/stays/import" className="btn-outline">
+                <FileJson className="size-4" aria-hidden /> JSON 일괄 등록
+              </Link>
+            </div>
           }
         />
       ) : (

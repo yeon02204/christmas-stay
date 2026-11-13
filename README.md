@@ -14,6 +14,7 @@
 |---|---|
 | 홈 | 숙소 카드(대표사진·지역·객실 수·최저가/가격 미입력), 숙소명 검색, 지역 필터, 가격순·최근순 정렬, 찜한 객실만, 카드에서 바로 찜·비교 담기, 빈 화면 |
 | 숙소 등록/수정 | 숙소명만 필수, 대표사진(URL/업로드), 저장하면 바로 객실 추가로 이동, 삭제(영향 범위 확인창) |
+| 숙소 일괄 등록 | JSON(ChatGPT 답변 그대로 가능)으로 숙소 여러 개 + 객실·날짜별 가격·추가금·시설·분위기·사진 URL·예약 링크 한 번에 등록, 저장 전 미리보기, 오류 위치 표시(숙소 › 객실 › 항목), 같은 이름 숙소 중복 등록 차단(저장 직전 재확인), 숙소 단위 실패 시 해당 숙소만 되돌림 |
 | 객실 등록/수정 | 객실명만 필수, **날짜 구간별** 숙박비·예약 가능 여부·확인일, 다른 날짜 가격 복사(예약 여부는 ‘확인 전’으로), 추가금(공통 기본값 + 날짜별 금액, 필수/선택), 총비용 미리보기, 사진 여러 장(URL 여러 줄 붙여넣기·파일·드래그·Ctrl+V), 시설 14종 3단계, 분위기 4항목, 이용 정보, **저장하고 다음 객실** |
 | 숙소 상세 | 대표사진, 주소 복사, 홈페이지, 메모, 객실 카드(사진 갤러리·가격·예약 여부·주요 시설·평가) |
 | 객실 상세 | 사진 갤러리(스와이프·키보드·썸네일), 총비용 계산기, 시설·분위기·이용 정보, 날짜별 가격표, 내 평가 5항목 / 상대 평가 |
@@ -46,11 +47,11 @@ src/
     stay/      StayCard, DeleteStayButton
     room/      RoomCard, ImageGallery, RatesEditor, RoomActions, roomDisplay, DeleteRoomButton
     compare/   CompareTable, PriceCalculator
-  pages/       Home, StayForm, StayDetail, RoomForm, RoomDetail, Compare, Favorites, Data, Login
+  pages/       Home, StayForm, BulkImport(일괄 등록), StayDetail, RoomForm, RoomDetail, Compare, Favorites, Data, Login
   store/       AppStore(상태·액션), session
-  services/    supabaseClient, api(RPC), photos(Storage), backup, legacyLocal, imageProcessing
+  services/    supabaseClient, api(RPC), photos(Storage), backup, legacyLocal, imageProcessing, bulkImport(일괄 등록 실행·되돌리기)
   hooks/       useUnsavedGuard, useFormHelpers
-  utils/       models, price(총비용), date, validation
+  utils/       models, price(총비용), date, validation, bulkImport(일괄 등록 JSON 검사)
 supabase/
   migrations/  ← Supabase SQL Editor 에서 실행할 파일
   tests/       ← 로컬 테스트 전용 (실서비스에서 실행 금지)

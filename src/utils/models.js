@@ -3,7 +3,7 @@
 
 export const SCHEMA_VERSION = 1
 
-export const DEFAULT_TRIP = { checkIn: '2026-12-24', checkOut: '2026-12-25' }
+export const DEFAULT_TRIP = { checkIn: '2026-12-25', checkOut: '2026-12-26' }
 
 export const FACILITIES = [
   { key: 'toilet', label: '개별 화장실' },
