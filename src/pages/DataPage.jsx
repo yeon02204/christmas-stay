@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CloudUpload, Download, FileJson, Info, Link2, LogOut, Users } from 'lucide-react'
 import ConfirmDialog from '../components/common/ConfirmDialog.jsx'
+import GuestPinSetting from '../components/common/GuestPinSetting.jsx'
 import { useToast } from '../components/common/Toast.jsx'
 import { useStore } from '../store/AppStore.jsx'
 import { buildBackup, downloadJson, parseBackupFile, runImport } from '../services/backup.js'
@@ -140,6 +141,8 @@ export default function DataPage() {
           <Link2 className="size-4" aria-hidden /> 예약 링크 업데이트하기
         </Link>
       </section>
+
+      <GuestPinSetting />
 
       <section className="rounded-3xl border border-line p-5 text-xs leading-relaxed text-muted">
         <p className="flex items-start gap-2">

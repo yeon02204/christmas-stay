@@ -6,7 +6,7 @@ import { NA } from '../common/fields.jsx'
 import { useToast } from '../common/Toast.jsx'
 import { TotalDisplay } from './PriceCalculator.jsx'
 import { FacilityStatus, RatingBadge } from '../room/roomDisplay.jsx'
-import { useDerived, useStore } from '../../store/AppStore.jsx'
+import { useDerived, useStore, useIsGuest } from '../../store/AppStore.jsx'
 import { AVAILABILITY, EXTRA_KIND, FACILITIES, FACILITY_STATUS, MOOD_FIELDS } from '../../utils/models.js'
 import { calculateTotal, effectiveExtraPrice, findCheapest, formatWon, getRate, ratingSummary } from '../../utils/price.js'
 
@@ -358,6 +358,17 @@ function RatingCell({ ratings }) {
 }
 
 function NotesCell({ room, field }) {
+  if (useIsGuest()) {
+    return room[field] ? (
+      <p className="whitespace-pre-line text-[13px] leading-relaxed">{room[field]}</p>
+    ) : (
+      <span className="muted-na text-[13px]">없음</span>
+    )
+  }
+  return <NotesEditor room={room} field={field} />
+}
+
+function NotesEditor({ room, field }) {
   const { actions } = useStore()
   const toast = useToast()
   const [text, setText] = useState(room[field])

@@ -109,7 +109,8 @@ begin
     from information_schema.role_table_grants where table_schema = 'public' and grantee = 'anon';
   assert bad is null, 'anon 테이블 권한 있음: ' || coalesce(bad, '');
   select string_agg(p.proname, ', ') into bad from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public' and (has_function_privilege('anon', p.oid, 'execute'));
+    where n.nspname = 'public' and (has_function_privilege('anon', p.oid, 'execute'))
+      and p.proname not in ('guest_login', 'guest_get_app_state');  -- 게스트 모드용 2개만 허용 (20261114020000_guest_view.sql)
   assert bad is null, 'anon 실행 가능 함수: ' || coalesce(bad, '');
   -- authenticated: TRUNCATE/REFERENCES/TRIGGER 없음, 모든 테이블 SELECT 있음
   select string_agg(table_name || ':' || privilege_type, ', ') into bad
@@ -121,7 +122,8 @@ begin
   assert bad is null, 'authenticated SELECT 없음: ' || coalesce(bad, '');
   -- authenticated: 모든 public 함수 실행 가능 (RPC + 헬퍼)
   select string_agg(p.proname, ', ') into bad from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public' and not has_function_privilege('authenticated', p.oid, 'execute');
+    where n.nspname = 'public' and not has_function_privilege('authenticated', p.oid, 'execute')
+      and p.proname not in ('guest_login', 'guest_get_app_state');  -- 게스트 전용 (회원은 필요 없음)
   assert bad is null, 'authenticated 실행 불가 함수: ' || coalesce(bad, '');
   -- 모든 public 테이블 RLS 켜짐
   select string_agg(c.relname, ', ') into bad from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -131,10 +133,12 @@ begin
   select string_agg(p.proname, ', ') into bad from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and not exists (select 1 from unnest(p.proconfig) c where c like 'search_path=%');
   assert bad is null, 'search_path 미고정 함수: ' || coalesce(bad, '');
-  -- security definer 함수는 3개만
+  -- security definer 함수: 멤버 확인 3개 + (게스트 마이그레이션 적용 시) 게스트·비밀번호 관리 함수
   select string_agg(p.proname, ', ' order by p.proname) into bad from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.prosecdef;
-  assert bad = '_require_member, is_member, stay_delete_impact', 'security definer 함수: ' || bad;
+  assert bad in ('_require_member, is_member, stay_delete_impact',
+                 '_require_member, guest_get_app_state, guest_login, is_member, member_guest_pin_status, member_set_guest_pin, stay_delete_impact'),
+         'security definer 함수: ' || bad;
   raise notice 'OK  권한: anon 0 · authenticated 최소 권한 · RLS 전 테이블 · search_path 고정 · definer 3개';
 end $$;
 

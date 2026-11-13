@@ -5,12 +5,13 @@ import EmptyState from '../components/common/EmptyState.jsx'
 import RoomCard from '../components/room/RoomCard.jsx'
 import DeleteStayButton from '../components/stay/DeleteStayButton.jsx'
 import { useToast } from '../components/common/Toast.jsx'
-import { useDerived } from '../store/AppStore.jsx'
+import { useDerived, useIsGuest } from '../store/AppStore.jsx'
 import { formatWon, lowestRoomPrice } from '../utils/price.js'
 import { formatRangeKey } from '../utils/date.js'
 import { STAY_TYPE_LABEL } from '../utils/models.js'
 
 export default function StayDetailPage() {
+  const isGuest = useIsGuest()
   const { stayId } = useParams()
   const { staysById, roomsByStay, key } = useDerived()
   const toast = useToast()
@@ -103,12 +104,14 @@ export default function StayDetailPage() {
             <div className="rounded-2xl bg-cream p-4 text-sm leading-relaxed whitespace-pre-line">{stay.memo}</div>
           )}
 
-          <div className="mt-auto flex flex-wrap gap-2 pt-2">
-            <Link to={`/stays/${stay.id}/edit`} className="btn-outline">
-              <Pencil className="size-4" aria-hidden /> 숙소 수정
-            </Link>
-            <DeleteStayButton stay={stay} className="btn-ghost text-burgundy" />
-          </div>
+          {!isGuest && (
+            <div className="mt-auto flex flex-wrap gap-2 pt-2">
+              <Link to={`/stays/${stay.id}/edit`} className="btn-outline">
+                <Pencil className="size-4" aria-hidden /> 숙소 수정
+              </Link>
+              <DeleteStayButton stay={stay} className="btn-ghost text-burgundy" />
+            </div>
+          )}
         </div>
       </section>
 
@@ -117,9 +120,11 @@ export default function StayDetailPage() {
           <h2 className="flex items-center gap-2 font-serif text-2xl font-bold">
             <BedDouble className="size-6 text-gold" aria-hidden /> 객실 <span className="text-muted">{rooms.length}</span>
           </h2>
-          <Link to={`/stays/${stay.id}/rooms/new`} className="btn-primary">
-            <Plus className="size-4" aria-hidden /> 객실 추가
-          </Link>
+          {!isGuest && (
+            <Link to={`/stays/${stay.id}/rooms/new`} className="btn-primary">
+              <Plus className="size-4" aria-hidden /> 객실 추가
+            </Link>
+          )}
         </div>
         {rooms.length === 0 ? (
           <EmptyState
@@ -128,7 +133,7 @@ export default function StayDetailPage() {
             title="아직 등록된 객실이 없어"
             description="객실별로 가격과 시설이 달라서, 객실을 추가해야 비교할 수 있어."
             action={
-              <Link to={`/stays/${stay.id}/rooms/new`} className="btn-primary">
+              !isGuest && <Link to={`/stays/${stay.id}/rooms/new`} className="btn-primary">
                 <Plus className="size-4" aria-hidden /> 첫 객실 추가하기
               </Link>
             }

@@ -5,7 +5,7 @@ import EmptyState from '../components/common/EmptyState.jsx'
 import { useToast } from '../components/common/Toast.jsx'
 import CompareTable, { RoomSelect } from '../components/compare/CompareTable.jsx'
 import TripDatePicker from '../components/layout/TripDatePicker.jsx'
-import { useDerived, useStore } from '../store/AppStore.jsx'
+import { useDerived, useStore, useIsGuest } from '../store/AppStore.jsx'
 
 function Toggle({ on, onClick, icon: Icon, children }) {
   return (
@@ -21,6 +21,7 @@ function Toggle({ on, onClick, icon: Icon, children }) {
 }
 
 export default function ComparePage() {
+  const isGuest = useIsGuest()
   const { state, actions } = useStore()
   const { roomsById, roomsByStay, staysById } = useDerived()
   const toast = useToast()
@@ -53,7 +54,7 @@ export default function ComparePage() {
                   onPick={(id) => actions.setCompareList([id]).catch((err) => toast.error(err))}
                 />
               </div>
-            ) : (
+            ) : isGuest ? null : (
               <Link to="/stays/new" className="btn-primary">
                 <Plus className="size-4" aria-hidden /> 숙소 등록
               </Link>

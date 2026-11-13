@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserRouter, Link, RouterProvider } from 'react-router-dom'
-import { LogOut, ServerCrash, ShieldAlert, Settings } from 'lucide-react'
+import { Eye, LogOut, ServerCrash, ShieldAlert, Settings } from 'lucide-react'
 import Layout from './components/layout/Layout.jsx'
 import { Logo } from './components/layout/Header.jsx'
 import { Spinner } from './components/common/fields.jsx'
@@ -14,11 +14,28 @@ import ComparePage from './pages/ComparePage.jsx'
 import FavoritesPage from './pages/FavoritesPage.jsx'
 import DataPage from './pages/DataPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
-import { AppStoreProvider, useStore } from './store/AppStore.jsx'
+import { AppStoreProvider, useIsGuest, useStore } from './store/AppStore.jsx'
 import { auth } from './services/api.js'
 import { configError } from './services/supabaseClient.js'
+import { clearGuest, loadGuest, saveGuest } from './services/guestSession.js'
 import { SessionContext, useSession } from './store/session.js'
 
+
+/** 구경 모드에서 열 수 없는 화면 (등록·수정·찜·데이터 관리) */
+function MemberOnly({ children }) {
+  const guest = useIsGuest()
+  if (!guest) return children
+  return (
+    <EmptyState
+      icon={Eye}
+      title="구경 모드에서는 볼 수 없는 화면이야"
+      description="숙소 목록·상세·비교는 볼 수 있어. 등록·수정은 로그인한 뒤에 해 줘."
+      action={<Link to="/" className="btn-primary">숙소 보러 가기</Link>}
+    />
+  )
+}
+const memberOnly = (el) => <MemberOnly>{el}</MemberOnly>
+const memberOnlyLazy = (load) => () => load().then((m) => ({ element: memberOnly(<m.default />) }))
 
 function NotFound() {
   return <EmptyState icon={Settings} title="페이지를 찾을 수 없어" action={<Link to="/" className="btn-primary">홈으로</Link>} />
@@ -30,18 +47,18 @@ const router = createBrowserRouter([
     element: <LayoutWithSession />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: 'stays/new', element: <StayFormPage /> },
+      { path: 'stays/new', element: memberOnly(<StayFormPage />) },
       // 자주 쓰지 않는 화면이라 열 때만 불러온다 (첫 화면 번들 크기 유지)
-      { path: 'stays/import', lazy: () => import('./pages/BulkImportPage.jsx').then((m) => ({ Component: m.default })) },
-      { path: 'stays/booking-links', lazy: () => import('./pages/BookingLinksPage.jsx').then((m) => ({ Component: m.default })) },
+      { path: 'stays/import', lazy: memberOnlyLazy(() => import('./pages/BulkImportPage.jsx')) },
+      { path: 'stays/booking-links', lazy: memberOnlyLazy(() => import('./pages/BookingLinksPage.jsx')) },
       { path: 'stays/:stayId', element: <StayDetailPage /> },
-      { path: 'stays/:stayId/edit', element: <StayFormPage /> },
-      { path: 'stays/:stayId/rooms/new', element: <RoomFormPage /> },
+      { path: 'stays/:stayId/edit', element: memberOnly(<StayFormPage />) },
+      { path: 'stays/:stayId/rooms/new', element: memberOnly(<RoomFormPage />) },
       { path: 'stays/:stayId/rooms/:roomId', element: <RoomDetailPage /> },
-      { path: 'stays/:stayId/rooms/:roomId/edit', element: <RoomFormPage /> },
+      { path: 'stays/:stayId/rooms/:roomId/edit', element: memberOnly(<RoomFormPage />) },
       { path: 'compare', element: <ComparePage /> },
-      { path: 'favorites', element: <FavoritesPage /> },
-      { path: 'data', element: <DataPage /> },
+      { path: 'favorites', element: memberOnly(<FavoritesPage />) },
+      { path: 'data', element: memberOnly(<DataPage />) },
       { path: '*', element: <NotFound /> },
     ],
   },
@@ -87,12 +104,39 @@ function StoreGate() {
 
 export default function App() {
   const [session, setSession] = useState(undefined) // undefined = 확인 중
+  const [guest, setGuest] = useState(() => loadGuest()) // 비회원 구경 세션 { token, expiresAt } | null
+  const [guestNotice, setGuestNotice] = useState(null)
+
+  const endGuest = useCallback((notice = null) => {
+    clearGuest()
+    setGuest(null)
+    setGuestNotice(notice)
+  }, [])
+
+  const guestExpired = useCallback(() => endGuest('구경 시간이 끝났어. 비밀번호를 다시 입력해 줘.'), [endGuest])
+  const guestSession = useMemo(() => ({ signOut: () => endGuest() }), [endGuest])
+
+  // 6시간이 지나면 자동으로 구경 모드 종료 (서버도 만료된 토큰을 거부함)
+  useEffect(() => {
+    if (!guest) return
+    const t = setTimeout(() => endGuest('구경 시간(6시간)이 끝났어. 비밀번호를 다시 입력해 줘.'), Math.max(0, guest.expiresAt - Date.now()))
+    return () => clearTimeout(t)
+  }, [guest, endGuest])
+
 
   useEffect(() => {
     if (configError) return
     let alive = true
-    auth.getSession().then((s) => alive && setSession(s ?? null))
-    const off = auth.onChange((s) => setSession(s ?? null))
+    // 회원으로 로그인돼 있으면 구경 세션은 정리
+    const onSession = (s) => {
+      if (s) {
+        clearGuest()
+        setGuest(null)
+      }
+      setSession(s ?? null)
+    }
+    auth.getSession().then((s) => alive && onSession(s))
+    const off = auth.onChange(onSession)
     return () => {
       alive = false
       off()
@@ -120,7 +164,28 @@ export default function App() {
     )
   }
   if (session === undefined) return <FullScreen><Spinner label="로그인 확인 중" /></FullScreen>
-  if (!session) return <LoginPage />
+  if (!session && guest) {
+    return (
+      <SessionContext.Provider value={guestSession}>
+        <AppStoreProvider key="guest" guest={guest} onAuthError={guestExpired}>
+          <StoreGate />
+        </AppStoreProvider>
+      </SessionContext.Provider>
+    )
+  }
+  if (!session)
+    return (
+      <LoginPage
+        notice={guestNotice}
+        onGuest={(g) => {
+          saveGuest(g)
+          setGuestNotice(null)
+          setGuest(g)
+          // 구경은 항상 홈에서 시작 (로그아웃 전 보던 회원 전용 화면에 머물지 않게)
+          router.navigate('/', { replace: true })
+        }}
+      />
+    )
 
   return (
     <SessionContext.Provider value={{ signOut }}>

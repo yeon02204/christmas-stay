@@ -1,8 +1,13 @@
 import { GitCompareArrows, Heart } from 'lucide-react'
-import { useDerived, useStore } from '../../store/AppStore.jsx'
+import { useDerived, useIsGuest, useStore } from '../../store/AppStore.jsx'
 import { useToast } from '../common/Toast.jsx'
 
 export function FavoriteButton({ room, size = 'md', withLabel = false }) {
+  if (useIsGuest()) return null // 구경 모드: 찜은 저장하지 않음
+  return <FavoriteToggle room={room} size={size} withLabel={withLabel} />
+}
+
+function FavoriteToggle({ room, size, withLabel }) {
   const { actions } = useStore()
   const { favoriteIds } = useDerived()
   const toast = useToast()

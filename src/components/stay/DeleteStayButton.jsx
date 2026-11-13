@@ -3,9 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
 import ConfirmDialog from '../common/ConfirmDialog.jsx'
 import { useToast } from '../common/Toast.jsx'
-import { useStore } from '../../store/AppStore.jsx'
+import { useStore, useIsGuest } from '../../store/AppStore.jsx'
 
-export default function DeleteStayButton({ stay, onDeleted, className = 'btn-danger' }) {
+export default function DeleteStayButton(props) {
+  if (useIsGuest()) return null // 구경 모드: 삭제 불가
+  return <DeleteStayButtonInner {...props} />
+}
+
+function DeleteStayButtonInner({ stay, onDeleted, className = 'btn-danger' }) {
   const { actions } = useStore()
   const toast = useToast()
   const navigate = useNavigate()

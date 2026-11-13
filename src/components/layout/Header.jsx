@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { LogOut, RefreshCw } from 'lucide-react'
+import { Eye, LogOut, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { DesktopNav } from './Navigation.jsx'
 import TripDatePicker from './TripDatePicker.jsx'
@@ -52,12 +52,23 @@ export default function Header({ onSignOut }) {
         <button className="icon-btn text-muted" onClick={refresh} aria-label="다른 기기에서 바뀐 내용 새로 불러오기" title="새로 불러오기">
           <RefreshCw className={`size-[18px] ${refreshing ? 'animate-spin' : ''}`} />
         </button>
-        <div className="hidden items-center gap-1 sm:flex">
-          <span className="text-[13px] font-semibold text-ink/70">{state.me?.displayName}</span>
-          <button className="icon-btn text-muted" onClick={onSignOut} aria-label="로그아웃" title="로그아웃">
-            <LogOut className="size-[18px]" />
-          </button>
-        </div>
+        {state.me?.guest ? (
+          <div className="flex items-center gap-1">
+            <span className="chip whitespace-nowrap bg-gold-soft text-ink">
+              <Eye className="size-3.5" aria-hidden /> 구경 모드
+            </span>
+            <button className="icon-btn text-muted" onClick={onSignOut} aria-label="구경 끝내기" title="구경 끝내기">
+              <LogOut className="size-[18px]" />
+            </button>
+          </div>
+        ) : (
+          <div className="hidden items-center gap-1 sm:flex">
+            <span className="text-[13px] font-semibold text-ink/70">{state.me?.displayName}</span>
+            <button className="icon-btn text-muted" onClick={onSignOut} aria-label="로그아웃" title="로그아웃">
+              <LogOut className="size-[18px]" />
+            </button>
+          </div>
+        )}
       </div>
       <div className="mx-auto max-w-6xl px-4 pb-3 lg:hidden md:px-6">
         <TripDatePicker />

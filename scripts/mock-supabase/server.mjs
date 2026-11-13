@@ -71,12 +71,12 @@ function authUser(req) {
   return p?.role === 'authenticated' ? p : null
 }
 
-async function asUser(claims, fn) {
+async function asUser(claims, fn, role = 'authenticated') {
   const client = await pool.connect()
   try {
     await client.query('begin')
-    await client.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify(claims)])
-    await client.query('set local role authenticated')
+    await client.query(`select set_config('request.jwt.claims', $1, true)`, [claims ? JSON.stringify(claims) : ''])
+    await client.query(`set local role ${role === 'anon' ? 'anon' : 'authenticated'}`)
     const r = await fn(client)
     await client.query('commit')
     return r
@@ -109,7 +109,10 @@ function pgError(res, e) {
 
 async function handleRpc(req, res, name) {
   const user = authUser(req)
-  if (!user) return send(res, 401, { code: 'PGRST301', message: 'JWT required' })
+  // 실제 Supabase 처럼: 로그인 토큰 없이 anon 키만 보내면 anon 역할로 실행 (권한은 DB 가 판단)
+  const bearer = (req.headers.authorization || '').replace(/^Bearer /i, '')
+  const anon = !user && (!bearer || bearer === req.headers.apikey || bearer.split('.').length !== 3)
+  if (!user && !anon) return send(res, 401, { code: 'PGRST301', message: 'JWT expired' })
   const sig = await fnSignature(name)
   if (!sig) return send(res, 404, { code: 'PGRST202', message: `function ${name} not found` })
   const body = await readJson(req)
@@ -123,7 +126,7 @@ async function handleRpc(req, res, name) {
     args.push(`${n} => $${params.length}::${type}`)
   })
   try {
-    const rows = await asUser(user, (c) => c.query(`select public.${name}(${args.join(', ')}) as result`, params))
+    const rows = await asUser(user, (c) => c.query(`select public.${name}(${args.join(', ')}) as result`, params), anon ? 'anon' : 'authenticated')
     send(res, 200, rows.rows[0]?.result ?? null)
   } catch (e) {
     pgError(res, e)

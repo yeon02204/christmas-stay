@@ -74,6 +74,34 @@ export const api = {
   setTrip: (checkIn, checkOut) => rpc('set_trip', { p_check_in: checkIn, p_check_out: checkOut }),
 
   importBackup: (data) => rpc('import_backup', { p: data }),
+
+  // 구경 비밀번호 관리 (멤버만). 비밀번호 값은 서버가 돌려주지 않는다 → { enabled, updatedAt }
+  guestPinStatus: () => rpc('member_guest_pin_status'),
+  setGuestPin: (pin) => rpc('member_set_guest_pin', { p_pin: pin }),
+}
+
+// 비회원 구경 모드: 로그인 없이(anon 키) 서버 함수 두 개만 쓴다. 쓰기 함수는 서버가 막아 둠.
+export const guestApi = {
+  /** 서버에서 4자리 비밀번호 확인 → { token, expiresAt(epoch 초) } */
+  async login(pin) {
+    const res = await rpc('guest_login', { p_pin: pin })
+    if (res?.ok) return { token: res.token, expiresAt: res.expiresAt * 1000 }
+    if (res?.error === 'locked') {
+      const min = Math.max(1, Math.ceil((res.retryAfter || 60) / 60))
+      throw new ApiError('auth', `비밀번호를 여러 번 틀려서 잠겼어. ${min}분 뒤에 다시 해 줘.`)
+    }
+    if (res?.error === 'disabled') throw new ApiError('auth', '지금은 구경 기능이 꺼져 있어.')
+    throw new ApiError('auth', '비밀번호가 맞지 않아.')
+  },
+  async getState(token) {
+    try {
+      return await rpc('guest_get_app_state', { p_token: token })
+    } catch (err) {
+      // 토큰 만료·비밀번호 변경 → 다시 입력해야 함
+      if (err.kind === 'forbidden') throw new ApiError('auth', '구경 시간이 끝났어. 비밀번호를 다시 입력해 줘.', err)
+      throw err
+    }
+  },
 }
 
 export const auth = {

@@ -4,12 +4,14 @@ import { useStore } from '../../store/AppStore.jsx'
 
 export function useNavItems() {
   const { state } = useStore()
-  return [
+  const items = [
     { to: '/', label: '홈', icon: Home, end: true },
     { to: '/favorites', label: '찜', icon: Heart, count: state.favorites.length },
     { to: '/compare', label: '비교', icon: GitCompareArrows, count: state.compare.length, max: 3 },
     { to: '/data', label: '데이터', icon: Database },
   ]
+  // 구경 모드: 찜·데이터 관리는 숨김
+  return state.me?.guest ? items.filter((i) => i.to !== '/favorites' && i.to !== '/data') : items
 }
 
 export function DesktopNav() {
@@ -48,7 +50,7 @@ export function MobileNav() {
       aria-label="주요 메뉴"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
-      <ul className="grid grid-cols-4">
+      <ul className="grid" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
         {items.map(({ to, label, icon: Icon, count, end }) => (
           <li key={to}>
             <NavLink

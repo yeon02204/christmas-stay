@@ -1,6 +1,6 @@
 # 데이터 구조 · API 명세
 
-SQL 은 `supabase/migrations/` 에 날짜 순서로 있어: `20261113000000_init.sql`(전체 스키마) → `20261114000000_stay_type.sql`(숙소 유형) → `20261114010000_booking_link_update.sql`(예약 링크만 바꾸는 함수).
+SQL 은 `supabase/migrations/` 에 날짜 순서로 있어: `20261113000000_init.sql`(전체 스키마) → `20261114000000_stay_type.sql`(숙소 유형) → `20261114010000_booking_link_update.sql`(예약 링크만 바꾸는 함수) → `20261114020000_guest_view.sql`(비회원 구경 모드).
 
 ## 1. 테이블
 
@@ -52,7 +52,8 @@ compare_extra_selections (user_id, extra_id)     ← 비교 화면에서 선택�
 | ratings | 멤버 (서로 조회) | **본인** |
 | storage `stay-photos` | 공개 URL 로 읽기 | 멤버만 업로드/삭제, 5MB, jpg/png/webp |
 
-- `anon` 역할은 모든 테이블·함수 권한이 회수돼 있어.
+- `anon` 역할은 모든 테이블 권한이 회수돼 있어. 함수는 비회원 구경용 `guest_login`, `guest_get_app_state` 두 개만 실행할 수 있어 (읽기 전용).
+- 구경 비밀번호(bcrypt 해시)·토큰 서명키·실패 횟수는 API 로 노출되지 않는 `private.guest_access` (단일 행)에 있어.
 - 숙소/객실 삭제 시 두 사람의 찜·평가·비교 기록은 FK cascade 로 함께 정리돼.
 
 ## 3. API (Supabase RPC)
@@ -69,6 +70,10 @@ compare_extra_selections (user_id, extra_id)     ← 비교 화면에서 선택�
 | `save_room` | `p: Room` | `{ room, extraIdMap, removedPaths }` | 기본정보+사진+추가금+시설+분위기+날짜별 가격 일괄 저장 |
 | `delete_room` | `p_room_id` | `{ removedPaths }` | |
 | `set_stay_booking_link` | `p_stay_id, p_url, p_only_empty` | `{ rooms, updated }` | 숙소의 모든 객실 예약 링크(`rooms.booking_url`)만 변경. 다른 칸·테이블은 그대로. version 증가로 열린 수정 화면은 충돌 감지 |
+| `guest_login` (anon) | `p_pin` | `{ ok, token, expiresAt }` 또는 `{ ok:false, error: wrong·locked·disabled }` | 구경 비밀번호 확인 → 6시간 토큰. 10분 내 5회 실패 시 15분 잠금 |
+| `guest_get_app_state` (anon) | `p_token` | AppState | 숙소·객실·가격·사진·일정만 (찜·평가·비교·멤버 제외). 만료/위조 토큰은 `42501` |
+| `member_guest_pin_status` | – | `{ enabled, updatedAt }` | 멤버 전용. 비밀번호 값은 반환하지 않음 |
+| `member_set_guest_pin` | `p_pin` (4자리, null=끄기) | `{ enabled, updatedAt }` | 멤버 전용. 바꾸면 기존 구경 토큰 모두 무효 |
 | `update_room_notes` | `p_room_id, p_pros, p_cons` | – | 비교 화면 장단점 (공유) |
 | `set_favorite` | `p_room_id, p_on` | – | 내 찜 |
 | `update_favorite_memo` | `p_room_id, p_memo` | – | |

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { FileJson, GitCompareArrows, Heart, MapPin, Plus, Search, SearchX, Tent } from 'lucide-react'
 import EmptyState from '../components/common/EmptyState.jsx'
 import StayCard from '../components/stay/StayCard.jsx'
-import { useDerived, useStore } from '../store/AppStore.jsx'
+import { useDerived, useIsGuest, useStore } from '../store/AppStore.jsx'
 import { STAY_TYPE_LABEL, STAY_TYPES } from '../utils/models.js'
 import { lowestRoomPrice } from '../utils/price.js'
 
@@ -18,6 +18,7 @@ const SORTS = {
 export default function HomePage() {
   const { state } = useStore()
   const { roomsByStay, favoriteIds, key } = useDerived()
+  const isGuest = useIsGuest()
   const [query, setQuery] = useState('')
   const [region, setRegion] = useState('') // '' = 전체, NONE = 지역 미입력
   const [stayType, setStayType] = useState('') // '' = 전체, NONE = 유형 미분류
@@ -85,18 +86,18 @@ export default function HomePage() {
             <h1 className="mt-2 font-serif text-3xl font-bold leading-snug md:text-4xl">우리의 겨울 여행을 찾아서 ❄️</h1>
             <p className="mt-2 text-white/80">어떤 곳에서 크리스마스를 보낼까?</p>
           </div>
-          <div className="flex flex-wrap gap-2 self-start md:self-auto">
+          {!isGuest && <div className="flex flex-wrap gap-2 self-start md:self-auto">
             <Link to="/stays/new" className="btn bg-white text-burgundy hover:bg-gold-soft">
               <Plus className="size-4" aria-hidden /> 숙소 등록
             </Link>
             <Link to="/stays/import" className="btn border border-white/40 text-white hover:bg-white/10">
               <FileJson className="size-4" aria-hidden /> JSON 일괄 등록
             </Link>
-          </div>
+          </div>}
         </div>
         <div className="relative mt-7 grid grid-cols-3 gap-2 md:max-w-lg">
           <Stat label="숙소 후보" value={state.stays.length} icon={Tent} />
-          <Stat label="찜한 객실" value={state.favorites.length} icon={Heart} to="/favorites" />
+          {!isGuest && <Stat label="찜한 객실" value={state.favorites.length} icon={Heart} to="/favorites" />}
           <Stat label="비교 목록" value={`${state.compare.length}/3`} icon={GitCompareArrows} to="/compare" />
         </div>
       </section>
@@ -107,7 +108,7 @@ export default function HomePage() {
           title="아직 등록된 숙소가 없어!"
           description="마음에 드는 글램핑 숙소를 하나씩 추가해 보자."
           action={
-            <div className="flex flex-wrap justify-center gap-2">
+            !isGuest && <div className="flex flex-wrap justify-center gap-2">
               <Link to="/stays/new" className="btn-primary">
                 <Plus className="size-4" aria-hidden /> 숙소 등록
               </Link>
@@ -126,7 +127,7 @@ export default function HomePage() {
               <input className="input border-transparent bg-cream pl-10" placeholder="숙소명 검색" value={query} onChange={(e) => setQuery(e.target.value)} type="search" />
             </label>
             <div className="grid grid-cols-2 gap-2 md:flex">
-              <label>
+              <label className={isGuest ? 'col-span-2' : undefined}>
                 <span className="sr-only">정렬</span>
                 <select className="input border-transparent bg-cream md:w-36" value={sort} onChange={(e) => setSort(e.target.value)}>
                   {Object.entries(SORTS).map(([k, v]) => (
@@ -134,14 +135,14 @@ export default function HomePage() {
                   ))}
                 </select>
               </label>
-              <button
+              {!isGuest && <button
                 type="button"
                 onClick={() => setFavOnly((v) => !v)}
                 aria-pressed={favOnly}
                 className={`btn ${favOnly ? 'bg-burgundy text-white' : 'bg-cream text-ink/75 hover:text-ink'}`}
               >
                 <Heart className={`size-4 ${favOnly ? 'fill-white' : ''}`} aria-hidden /> 찜한 객실만
-              </button>
+              </button>}
             </div>
           </div>
 

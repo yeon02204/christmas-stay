@@ -21,7 +21,8 @@
 | 객실 상세 | 사진 갤러리(스와이프·키보드·썸네일), 총비용 계산기, 시설·분위기·이용 정보, 날짜별 가격표, 내 평가 5항목 / 상대 평가 |
 | 비교 | 최대 3개, 같은 날짜·조건(바비큐/불멍/기타 추가금)으로 총비용, 가장 저렴 표시, 차이 강조, 대상 변경·제거, 장단점(공유), 모바일 가로 스크롤 |
 | 찜 | 순위 지정, 개인 메모, 가격·예약 여부·평가, 비교 담기 |
-| 데이터 | JSON 백업(사진 포함 선택)·복원, 이전 localStorage 데이터 이전, 로그아웃 |
+| 데이터 | JSON 백업(사진 포함 선택)·복원, 이전 localStorage 데이터 이전, 예약 링크 일괄 업데이트, 구경 비밀번호 관리, 로그아웃 |
+| 비회원 구경 | 로그인 화면의 '비회원으로 구경하기' → 4자리 비밀번호(서버에서 확인) → 숙소·객실·사진·가격·추가금·검색·필터·비교 **조회만**. 등록·수정·삭제·찜·평가·일괄 등록·데이터 관리는 숨김+주소 차단+서버 차단. 6시간 유지, 브라우저 닫으면 재입력, '구경 끝내기'. 비교·여행 날짜는 그 화면에서만 바뀌고 저장 안 됨 |
 
 **공유 vs 개인**: 숙소·객실·가격·장단점·여행 날짜는 두 사람이 함께 수정. 찜·메모·순위·비교 목록·평가는 사용자별(평가는 서로 조회 가능).
 동시 편집은 실시간이 아니라 **창으로 돌아올 때 / 새로고침 버튼**으로 반영되고, 같은 항목을 동시에 저장하면 충돌을 감지해 확인창을 띄워.
@@ -83,8 +84,8 @@ docs/          SETUP.md(설정 가이드), DATABASE.md(DB·RLS·API 명세)
 
 ```bash
 createdb cs_test
-psql -d cs_test -f supabase/tests/00_local_supabase_stub.sql -f supabase/migrations/20261113000000_init.sql -f supabase/migrations/20261114000000_stay_type.sql -f supabase/migrations/20261114010000_booking_link_update.sql
-psql -d cs_test -f supabase/tests/10_rls_and_rpc_test.sql -f supabase/tests/30_hardening_test.sql -f supabase/tests/40_stay_type_test.sql -f supabase/tests/20_reset_test_data.sql -f supabase/tests/50_booking_link_test.sql   # DB 테스트
+psql -d cs_test -f supabase/tests/00_local_supabase_stub.sql -f supabase/migrations/20261113000000_init.sql -f supabase/migrations/20261114000000_stay_type.sql -f supabase/migrations/20261114010000_booking_link_update.sql -f supabase/migrations/20261114020000_guest_view.sql
+psql -d cs_test -f supabase/tests/10_rls_and_rpc_test.sql -f supabase/tests/30_hardening_test.sql -f supabase/tests/40_stay_type_test.sql -f supabase/tests/20_reset_test_data.sql -f supabase/tests/50_booking_link_test.sql   # DB 테스트 (60_guest_test.sql 은 10번 데이터가 있는 상태에서)
 psql -d cs_test -f supabase/tests/20_reset_test_data.sql       # 테스트 계정 준비
 DATABASE_URL=postgres://... npm run mock:supabase              # :54321
 VITE_SUPABASE_URL=http://localhost:54321 VITE_SUPABASE_PUBLISHABLE_KEY=local npm run dev

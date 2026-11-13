@@ -9,7 +9,7 @@ import PriceCalculator from '../components/compare/PriceCalculator.jsx'
 import { CompareButton, FavoriteButton } from '../components/room/RoomActions.jsx'
 import DeleteRoomButton from '../components/room/DeleteRoomButton.jsx'
 import { AvailabilityChip, FacilityStatus, RatingBadge, TextOrNA, guestText } from '../components/room/roomDisplay.jsx'
-import { useDerived, useStore } from '../store/AppStore.jsx'
+import { useDerived, useIsGuest, useStore } from '../store/AppStore.jsx'
 import { AVAILABILITY, EXTRA_KIND, FACILITIES, MOOD_FIELDS, RATING_CRITERIA } from '../utils/models.js'
 import { effectiveExtraPrice, formatWon, ratingSummary } from '../utils/price.js'
 import { formatRangeKey } from '../utils/date.js'
@@ -17,6 +17,7 @@ import { formatRangeKey } from '../utils/date.js'
 export default function RoomDetailPage() {
   const { roomId } = useParams()
   const { roomsById, staysById, key, myRatings, partnerRatings, partner } = useDerived()
+  const isGuest = useIsGuest()
   const { state, actions } = useStore()
   const toast = useToast()
   const room = roomsById[roomId]
@@ -71,9 +72,11 @@ export default function RoomDetailPage() {
           <div className="flex flex-wrap gap-2">
             <FavoriteButton room={room} withLabel />
             <CompareButton room={room} withLabel />
-            <Link to={`/stays/${room.stayId}/rooms/${room.id}/edit`} className="btn-outline">
-              <Pencil className="size-4" aria-hidden /> 수정
-            </Link>
+            {!isGuest && (
+              <Link to={`/stays/${room.stayId}/rooms/${room.id}/edit`} className="btn-outline">
+                <Pencil className="size-4" aria-hidden /> 수정
+              </Link>
+            )}
           </div>
           <div className="flex items-center justify-between gap-2 text-sm">
             <span className="text-muted">{formatRangeKey(key)} 예약</span>
@@ -97,6 +100,7 @@ export default function RoomDetailPage() {
           </dl>
         </section>
 
+        {!isGuest && (
         <section className="card p-6">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="section-title flex items-center gap-2">
@@ -125,6 +129,7 @@ export default function RoomDetailPage() {
             </div>
           )}
         </section>
+        )}
 
         <section className="card p-6">
           <h2 className="section-title mb-4">분위기</h2>

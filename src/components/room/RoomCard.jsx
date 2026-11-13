@@ -3,11 +3,12 @@ import { ChevronRight, Pencil, Users } from 'lucide-react'
 import ImageGallery from './ImageGallery.jsx'
 import { CompareButton, FavoriteButton } from './RoomActions.jsx'
 import { AvailabilityChip, FacilityChips, RatingBadge, RoomPrice, guestText } from './roomDisplay.jsx'
-import { useDerived } from '../../store/AppStore.jsx'
+import { useDerived, useIsGuest } from '../../store/AppStore.jsx'
 
 export default function RoomCard({ room }) {
   const { key, myRatings, partnerRatings, partner } = useDerived()
   const guests = guestText(room)
+  const isGuest = useIsGuest()
   return (
     <article className="card flex animate-fade-up flex-col overflow-hidden">
       <div className="relative">
@@ -27,9 +28,11 @@ export default function RoomCard({ room }) {
               {room.bedType && ` · ${room.bedType}`}
             </p>
           </div>
-          <Link to={`/stays/${room.stayId}/rooms/${room.id}/edit`} className="icon-btn -mr-2 -mt-1 text-muted" aria-label={`${room.name} 수정`}>
-            <Pencil className="size-4" />
-          </Link>
+          {!isGuest && (
+            <Link to={`/stays/${room.stayId}/rooms/${room.id}/edit`} className="icon-btn -mr-2 -mt-1 text-muted" aria-label={`${room.name} 수정`}>
+              <Pencil className="size-4" />
+            </Link>
+          )}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <RoomPrice room={room} rangeKey={key} className="text-lg" />
@@ -37,7 +40,7 @@ export default function RoomCard({ room }) {
         </div>
         <FacilityChips facilities={room.facilities} max={5} />
         <div className="flex flex-wrap gap-1.5">
-          <RatingBadge ratings={myRatings[room.id]} label="내 평가" />
+          {!isGuest && <RatingBadge ratings={myRatings[room.id]} label="내 평가" />}
           {partner && <RatingBadge ratings={partnerRatings[room.id]} label={partner.displayName} />}
         </div>
         <div className="mt-auto pt-1">

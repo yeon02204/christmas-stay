@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { api } from '../services/api.js'
+import { api, ApiError, guestApi } from '../services/api.js'
 import { removePhotos } from '../services/photos.js'
 import { EMPTY_RATINGS } from '../utils/models.js'
 import { rangeKey } from '../utils/date.js'
@@ -40,7 +40,15 @@ function transformState(raw) {
 const customToExtraIds = (custom) =>
   Object.values(custom).flatMap((sel) => Object.keys(sel).filter((k) => sel[k]))
 
-export function AppStoreProvider({ children, onAuthError }) {
+export const GUEST_READONLY = '구경 모드에서는 볼 수만 있어. 수정은 로그인한 뒤에 해 줘.'
+
+/**
+ * guest: { token } 이면 비회원 구경 모드.
+ *  - 데이터는 guest_get_app_state(읽기 전용)로 불러온다.
+ *  - 저장·삭제·찜·평가·메모 액션은 서버에 보내지 않고 바로 거부한다 (서버도 anon 쓰기를 막아 둠).
+ *  - 비교 목록·비교 조건·여행 날짜는 이 화면에서만 바뀌고 DB 에는 저장하지 않는다.
+ */
+export function AppStoreProvider({ children, onAuthError, guest = null }) {
   const [state, setState] = useState(null)
   const [status, setStatus] = useState('loading') // loading | ready | error
   const [error, setError] = useState(null)
@@ -68,8 +76,12 @@ export function AppStoreProvider({ children, onAuthError }) {
     async ({ silent = false } = {}) => {
       if (!silent) setStatus((s) => (s === 'ready' ? s : 'loading'))
       try {
-        const raw = await api.getState()
-        apply(transformState(raw))
+        const raw = guest ? await guestApi.getState(guest.token) : await api.getState()
+        const next = transformState(raw)
+        const prev = stateRef.current
+        // 게스트가 이 화면에서 고른 비교 목록·조건·날짜는 새로 불러와도 유지
+        if (guest && prev) Object.assign(next, { compare: prev.compare, compareOptions: prev.compareOptions, trip: prev.trip })
+        apply(next)
         loadedAt.current = Date.now()
         setStatus('ready')
         setError(null)
@@ -82,7 +94,7 @@ export function AppStoreProvider({ children, onAuthError }) {
         if (silent) throw err
       }
     },
-    [apply, onAuthError],
+    [apply, onAuthError, guest],
   )
 
   useEffect(() => {
@@ -120,7 +132,8 @@ export function AppStoreProvider({ children, onAuthError }) {
     [apply, handleError],
   )
 
-  const actions = useMemo(
+  // 아래 액션 안의 `actions.` 는 최종 actions(게스트면 게스트용)를 가리킨다
+  const memberActions = useMemo(
     () => ({
       refresh,
 
@@ -249,6 +262,31 @@ export function AppStoreProvider({ children, onAuthError }) {
     [apply, handleError, optimistic, refresh],
   )
 
+  const actions = useMemo(() => {
+    if (!guest) return memberActions
+    const blocked = () => Promise.reject(new ApiError('forbidden', GUEST_READONLY))
+    const local = (patch) => {
+      apply((s) => ({ ...s, ...patch(s) }))
+      return Promise.resolve()
+    }
+    return {
+      ...memberActions,
+      saveStay: blocked,
+      getDeleteImpact: blocked,
+      deleteStay: blocked,
+      saveRoom: blocked,
+      deleteRoom: blocked,
+      updateRoomNotes: blocked,
+      toggleFavorite: blocked,
+      updateFavoriteMemo: blocked,
+      moveFavorite: blocked,
+      setRating: blocked,
+      setCompareList: (ids) => local(() => ({ compare: [...new Set(ids)].slice(0, 3) })),
+      setCompareOptions: (patch) => local((s) => ({ compareOptions: { ...s.compareOptions, ...patch } })),
+      setTrip: (trip) => local(() => ({ trip })),
+    }
+  }, [guest, memberActions, apply])
+
   const value = useMemo(() => ({ state, status, error, actions }), [state, status, error, actions])
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }
@@ -257,6 +295,12 @@ export function useStore() {
   const ctx = useContext(StoreContext)
   if (!ctx) throw new Error('useStore must be used inside AppStoreProvider')
   return ctx
+}
+
+/** 비회원 구경 모드인지 */
+export function useIsGuest() {
+  const { state } = useStore()
+  return !!state?.me?.guest
 }
 
 /** 자주 쓰는 파생 데이터 */
