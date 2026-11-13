@@ -5,7 +5,7 @@
 //  · 날짜별 가격은 JSON 에 적힌 날짜 구간에만 넣는다. 다른 날짜로 복사하지 않는다.
 //  · DB 제약조건과 같은 기준으로 미리 검사해서, 저장 도중 실패하는 일을 줄인다.
 
-import { createDefaultExtras, createEmptyRoom, createEmptyStay, FACILITIES, MOOD_FIELDS } from './models.js'
+import { createDefaultExtras, createEmptyRoom, createEmptyStay, FACILITIES, MOOD_FIELDS, STAY_TYPES } from './models.js'
 import { isIsoDate, nightsBetween } from './date.js'
 import { parsePriceInput } from './price.js'
 import { isValidUrl, normalizeUrlInput } from './validation.js'
@@ -19,7 +19,7 @@ const MAX = {
   cancelPolicy: 5000, notes: 5000, extraName: 50, path: 300,
 }
 
-const STAY_KEYS = new Set(['name', 'region', 'address', 'homepageUrl', 'coverImageUrl', 'memo', 'rooms'])
+const STAY_KEYS = new Set(['name', 'stayType', 'type', 'region', 'address', 'homepageUrl', 'coverImageUrl', 'memo', 'rooms'])
 const ROOM_KEYS = new Set([
   'name', 'baseGuests', 'maxGuests', 'size', 'bedType', 'description', 'imageUrls', 'extras', 'rates',
   'facilities', 'mood', 'checkInTime', 'checkOutTime', 'checkIn', 'checkOut', 'bookingUrl', 'cancelPolicy', 'notes',
@@ -40,6 +40,13 @@ const AVAILABILITY_VALUE = new Map([
   ...['available', '예약가능', '가능'].map((v) => [v, 'available']),
   ...['unavailable', '예약불가', '불가', '마감', '매진'].map((v) => [v, 'unavailable']),
   ...['unchecked', '확인전', '미확인', '확인필요', ''].map((v) => [v, 'unchecked']),
+])
+// 숙소 유형: 영문 키 또는 한글 이름 (공백·가운뎃점 무시). 빈 값 = 미분류
+const STAY_TYPE_VALUE = new Map([
+  ['', ''],
+  ...STAY_TYPES.flatMap((t) => [[t.key, t.key], [squash(t.label), t.key]]),
+  ...['호텔', '리조트', 'hotel·resort'].map((v) => [squash(v), 'hotel']),
+  ...['캠핑장', '오토캠핑'].map((v) => [squash(v), 'camping']),
 ])
 const EXTRA_KIND_VALUE = new Map([
   ...['bbq', '바비큐'].map((v) => [v, 'bbq']),
@@ -393,6 +400,7 @@ function parseStay(raw, index, existingNames) {
   else if (!name.value) errors.push(`${path}.name: 숙소명이 필요해`)
   else stay.name = name.value
   take('region', text(raw.region, MAX.region, `${path}.region`))
+  take('stayType', mapped(STAY_TYPE_VALUE, raw.stayType ?? raw.type, `${path}.stayType`, STAY_TYPES.map((t) => t.label).join(' / ')))
   take('address', text(raw.address, MAX.address, `${path}.address`))
   take('homepageUrl', url(raw.homepageUrl, `${path}.homepageUrl`))
   take('memo', text(raw.memo, MAX.memo, `${path}.memo`))
@@ -468,6 +476,7 @@ export const BULK_EXAMPLE = {
   stays: [
     {
       name: '숙소 이름',
+      stayType: '글램핑',
       region: '지역',
       address: '도로명 주소',
       homepageUrl: 'https://example.com/stay',
@@ -518,6 +527,7 @@ export const CHATGPT_PROMPT = `아래 형식의 JSON 으로만 답해 줘. 설�
 - 날짜별 가격은 실제로 확인한 날짜 구간만 rates 에 넣어 (checkIn, checkOut 은 YYYY-MM-DD)
 - availability 는 available(예약 가능) / unavailable(예약 불가) / unchecked(확인 전)
 - 사진·예약 링크는 https:// 로 시작하는 실제 주소만. 모르면 빼
+- stayType(숙소 유형): ${STAY_TYPES.map((t) => t.label).join(', ')} 중 하나. 모르면 빼
 - 시설 이름: ${FACILITIES.map((f) => f.label).join(', ')}
 
 형식:

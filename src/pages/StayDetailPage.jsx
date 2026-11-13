@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, BedDouble, Copy, ExternalLink, Home, MapPin, Pencil, Plus } from 'lucide-react'
+import { ArrowLeft, BedDouble, Copy, ExternalLink, Home, MapPin, Pencil, Plus, Tent } from 'lucide-react'
 import Photo from '../components/common/Photo.jsx'
 import EmptyState from '../components/common/EmptyState.jsx'
 import RoomCard from '../components/room/RoomCard.jsx'
@@ -8,6 +8,7 @@ import { useToast } from '../components/common/Toast.jsx'
 import { useDerived } from '../store/AppStore.jsx'
 import { formatWon, lowestRoomPrice } from '../utils/price.js'
 import { formatRangeKey } from '../utils/date.js'
+import { STAY_TYPE_LABEL } from '../utils/models.js'
 
 export default function StayDetailPage() {
   const { stayId } = useParams()
@@ -48,11 +49,18 @@ export default function StayDetailPage() {
         <Photo image={cover} alt={stay.name} className="aspect-[4/3] w-full md:aspect-auto md:h-full md:min-h-80" iconSize="size-12" />
         <div className="flex flex-col gap-4 p-6 md:p-8">
           <div>
-            {stay.region && (
-              <span className="chip bg-gold-soft text-ink">
-                <MapPin className="size-3.5 text-burgundy" aria-hidden /> {stay.region}
-              </span>
-            )}
+            <div className="flex flex-wrap gap-1.5">
+              {STAY_TYPE_LABEL[stay.stayType] && (
+                <span className="chip bg-pine-soft text-pine">
+                  <Tent className="size-3.5" aria-hidden /> {STAY_TYPE_LABEL[stay.stayType]}
+                </span>
+              )}
+              {stay.region && (
+                <span className="chip bg-gold-soft text-ink">
+                  <MapPin className="size-3.5 text-burgundy" aria-hidden /> {stay.region}
+                </span>
+              )}
+            </div>
             <h1 className="mt-2 font-serif text-3xl font-bold leading-tight">{stay.name}</h1>
           </div>
 

@@ -8,6 +8,7 @@ import {
   MOOD_FIELDS,
   RATING_CRITERIA,
   SCHEMA_VERSION,
+  STAY_TYPE_LABEL,
 } from './models.js'
 import { isIsoDate, nightsBetween } from './date.js'
 
@@ -33,6 +34,7 @@ export function normalizeUrlInput(value) {
 export function validateStay(stay) {
   const errors = {}
   if (!stay.name?.trim()) errors.name = '숙소명을 입력해 줘'
+  if (stay.stayType && !STAY_TYPE_LABEL[stay.stayType]) errors.stayType = '숙소 유형을 다시 골라 줘'
   if (!isValidUrl(stay.homepageUrl)) errors.homepageUrl = 'http:// 또는 https:// 로 시작하는 주소를 입력해 줘'
   if (stay.coverImage?.type === 'url' && !isValidUrl(stay.coverImage.url))
     errors.coverImage = '이미지 주소가 올바르지 않아'
@@ -92,6 +94,7 @@ function normStay(s) {
     id: s.id,
     name: str(s.name),
     region: str(s.region),
+    stayType: STAY_TYPE_LABEL[s.stayType] ? s.stayType : '',
     address: str(s.address),
     homepageUrl: str(s.homepageUrl),
     coverImage: normImageRef(s.coverImage),

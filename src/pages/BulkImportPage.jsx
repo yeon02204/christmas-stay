@@ -24,7 +24,7 @@ import { useStore } from '../store/AppStore.jsx'
 import { useUnsavedGuard } from '../hooks/useUnsavedGuard.js'
 import { runBulkImport } from '../services/bulkImport.js'
 import { BULK_EXAMPLE, CHATGPT_PROMPT, parseBulkInput, summarizeFacilities } from '../utils/bulkImport.js'
-import { AVAILABILITY, MOOD_FIELDS } from '../utils/models.js'
+import { AVAILABILITY, MOOD_FIELDS, STAY_TYPE_LABEL } from '../utils/models.js'
 import { formatRangeKey } from '../utils/date.js'
 import { formatWon } from '../utils/price.js'
 
@@ -293,6 +293,7 @@ function StayPreview({ item, checked, onToggle, disabled, result }) {
             <label htmlFor={boxId} className="font-serif text-lg font-bold">
               {stay.name || <span className="muted-na">이름 없음</span>}
             </label>
+            {STAY_TYPE_LABEL[stay.stayType] && <span className="chip bg-pine-soft text-pine">{STAY_TYPE_LABEL[stay.stayType]}</span>}
             {stay.region && <span className="chip bg-gold-soft text-ink">{stay.region}</span>}
             {duplicate && <span className="chip bg-burgundy-soft text-burgundy">이미 있는 이름</span>}
             {hasError && <span className="chip bg-burgundy text-white">오류 {errors.length}건</span>}

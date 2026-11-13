@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
-import { BedDouble, ChevronRight, Heart, MapPin } from 'lucide-react'
+import { BedDouble, ChevronRight, Heart, MapPin, Tent } from 'lucide-react'
 import Photo from '../common/Photo.jsx'
 import { CompareButton, FavoriteButton } from '../room/RoomActions.jsx'
 import { RoomPrice } from '../room/roomDisplay.jsx'
 import { formatWon, lowestRoomPrice } from '../../utils/price.js'
+import { STAY_TYPE_LABEL } from '../../utils/models.js'
 import { useDerived } from '../../store/AppStore.jsx'
 
 export default function StayCard({ stay, rooms }) {
@@ -18,14 +19,20 @@ export default function StayCard({ stay, rooms }) {
       <Link to={`/stays/${stay.id}`} className="relative block overflow-hidden" aria-label={`${stay.name} 상세 보기`}>
         <Photo image={cover} alt={stay.name} className="aspect-[4/3] w-full transition-transform duration-500 group-hover:scale-[1.03]" iconSize="size-10" />
         <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
-          {stay.region ? (
-            <span className="chip bg-white/90 text-ink shadow-soft backdrop-blur">
-              <MapPin className="size-3.5 text-burgundy" aria-hidden />
-              {stay.region}
-            </span>
-          ) : (
-            <span />
-          )}
+          <div className="flex flex-wrap gap-1.5">
+            {STAY_TYPE_LABEL[stay.stayType] && (
+              <span className="chip bg-pine text-white shadow-soft">
+                <Tent className="size-3.5" aria-hidden />
+                {STAY_TYPE_LABEL[stay.stayType]}
+              </span>
+            )}
+            {stay.region && (
+              <span className="chip bg-white/90 text-ink shadow-soft backdrop-blur">
+                <MapPin className="size-3.5 text-burgundy" aria-hidden />
+                {stay.region}
+              </span>
+            )}
+          </div>
           {favCount > 0 && (
             <span className="chip bg-burgundy text-white shadow-soft">
               <Heart className="size-3.5 fill-white" aria-hidden />

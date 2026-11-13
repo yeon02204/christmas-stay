@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Home, ImageIcon, NotebookPen } from 'lucide-react'
-import { FormSection, TextArea, TextInput } from '../components/common/fields.jsx'
+import { Field, FormSection, TextArea, TextInput } from '../components/common/fields.jsx'
 import ImagePicker from '../components/common/ImagePicker.jsx'
 import ConfirmDialog from '../components/common/ConfirmDialog.jsx'
 import UnsavedDialog from '../components/common/UnsavedDialog.jsx'
@@ -11,7 +11,7 @@ import DeleteStayButton from '../components/stay/DeleteStayButton.jsx'
 import { useStore } from '../store/AppStore.jsx'
 import { useUnsavedGuard } from '../hooks/useUnsavedGuard.js'
 import { isEqualJson, storagePaths, useUploadTracker } from '../hooks/useFormHelpers.js'
-import { createEmptyStay } from '../utils/models.js'
+import { createEmptyStay, STAY_TYPES } from '../utils/models.js'
 import { normalizeUrlInput, validateStay } from '../utils/validation.js'
 
 export default function StayFormPage() {
@@ -103,7 +103,18 @@ function StayForm({ initial }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <TextInput label="숙소명" required value={form.name} onChange={set('name')} error={errors.name} placeholder="예: 숲속 글램핑" className="sm:col-span-2" autoFocus={isNew} maxLength={100} />
           <TextInput label="지역" value={form.region} onChange={set('region')} placeholder="예: 가평" maxLength={50} />
+          <Field label={<label htmlFor="stay-type">숙소 유형</label>} error={errors.stayType}>
+            <select id="stay-type" className="input" value={form.stayType} onChange={set('stayType')}>
+              <option value="">아직 안 정함</option>
+              {STAY_TYPES.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </Field>
           <TextInput
+            className="sm:col-span-2"
             label="숙소 홈페이지 URL"
             value={form.homepageUrl}
             onChange={set('homepageUrl')}

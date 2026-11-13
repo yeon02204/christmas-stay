@@ -1,6 +1,6 @@
 # 데이터 구조 · API 명세
 
-모든 SQL 은 `supabase/migrations/20261113000000_init.sql` 하나에 있어.
+SQL 은 `supabase/migrations/` 에 날짜 순서로 있어: `20261113000000_init.sql`(전체 스키마) → `20261114000000_stay_type.sql`(숙소 유형).
 
 ## 1. 테이블
 
@@ -9,7 +9,7 @@ auth.users (Supabase 기본)
   └─ members (user_id PK, display_name)         ← 최대 2명, 여기 있는 계정만 접근 가능
 
 [공동 데이터 — 두 멤버가 함께 조회·수정]
-stays (숙소)
+stays (숙소) ........................... stay_type: '' | glamping | poolvilla | caravan | camping | pension | hotel | mixed | other  ('' = 미분류)
   └─ rooms (객실) ............................ stay_id FK, on delete cascade
        ├─ room_images (사진, 순서) ........... url 또는 storage_path 중 하나만
        ├─ room_extras (추가금 항목) .......... kind: bbq | fire | custom, default_price(null=가격 미확인), required

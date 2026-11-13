@@ -22,6 +22,20 @@ export const FACILITIES = [
   { key: 'projector', label: '빔프로젝터' },
 ]
 
+// 숙소 유형. 값은 DB 제약조건(stays_stay_type_valid, 20261114000000_stay_type.sql)과 같아야 한다.
+// '' = 아직 정하지 않음 (미분류)
+export const STAY_TYPES = [
+  { key: 'glamping', label: '글램핑' },
+  { key: 'poolvilla', label: '풀빌라' },
+  { key: 'caravan', label: '카라반' },
+  { key: 'camping', label: '캠핑' },
+  { key: 'pension', label: '펜션' },
+  { key: 'hotel', label: '호텔·리조트' },
+  { key: 'mixed', label: '복합' },
+  { key: 'other', label: '기타' },
+]
+export const STAY_TYPE_LABEL = Object.fromEntries(STAY_TYPES.map((t) => [t.key, t.label]))
+
 export const FACILITY_STATUS = {
   yes: '있음',
   no: '없음',
@@ -79,6 +93,7 @@ export function createEmptyStay() {
     id: '',
     name: '',
     region: '',
+    stayType: '', // STAY_TYPES 의 key 또는 '' (미분류)
     address: '',
     homepageUrl: '',
     version: null,

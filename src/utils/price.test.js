@@ -76,3 +76,14 @@ describe('백업 검증', () => {
     expect(data.compare).toEqual(['r'])
   })
 })
+
+describe('숙소 유형 검증', () => {
+  it('정해진 유형만 허용, 백업 복원 시 모르는 값은 미분류', async () => {
+    const { validateStay } = await import('./validation.js')
+    expect(validateStay({ name: 'a', stayType: 'glamping' }).stayType).toBeUndefined()
+    expect(validateStay({ name: 'a', stayType: '' }).stayType).toBeUndefined()
+    expect(validateStay({ name: 'a', stayType: 'motel' }).stayType).toBeTruthy()
+    const { data } = normalizeData({ stays: [{ id: 's', name: 'a', stayType: 'motel' }, { id: 't', name: 'b', stayType: 'caravan' }], rooms: [] })
+    expect(data.stays.map((s) => s.stayType)).toEqual(['', 'caravan'])
+  })
+})

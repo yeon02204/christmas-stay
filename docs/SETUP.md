@@ -27,10 +27,17 @@
    - Plan: Free
 2. 생성 완료까지 1~2분 기다리기
 
-## 3. DB 테이블·보안 정책 만들기 (SQL 한 번 실행)
+## 3. DB 테이블·보안 정책 만들기 (SQL 실행)
+
+`supabase/migrations/` 의 파일을 **파일 이름(날짜) 순서대로** 하나씩 실행해. 이미 실행한 파일을 다시 실행해도 데이터는 지워지지 않아.
+
+| 순서 | 파일 | 내용 |
+|---|---|---|
+| 1 | `20261113000000_init.sql` | 테이블·RLS·Storage·RPC 전체 |
+| 2 | `20261114000000_stay_type.sql` | 숙소 유형(글램핑·풀빌라·카라반 …) 칸 추가 |
 
 1. ✅ 왼쪽 메뉴 **SQL Editor** → **New query**
-2. ✅ 프로젝트의 `supabase/migrations/20261113000000_init.sql` 파일 내용을 **전부** 복사해서 붙여넣기 → **Run**
+2. ✅ 위 표의 파일 내용을 **전부** 복사해서 붙여넣기 → **Run** (파일마다 반복)
 3. “Success” 가 나오면 완료. 확인:
    - **Table Editor** 에 `stays`, `rooms`, `room_rates`, `favorites`, `ratings` … 테이블이 보임
    - **Storage** 에 `stay-photos` 버킷이 보임

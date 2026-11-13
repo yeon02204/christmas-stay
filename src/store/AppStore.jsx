@@ -27,7 +27,8 @@ function transformState(raw) {
     members: raw.members || [],
     trip: { checkIn: raw.trip.checkIn, checkOut: raw.trip.checkOut },
     tripUpdatedBy: raw.trip.updatedBy,
-    stays: raw.stays || [],
+    // 유형 컬럼 마이그레이션 전 DB 에서도 깨지지 않도록 기본값 '' (미분류)
+    stays: (raw.stays || []).map((s) => ({ ...s, stayType: s.stayType ?? '' })),
     rooms: raw.rooms || [],
     favorites: raw.favorites || [],
     ratingsByUser,
@@ -127,14 +128,15 @@ export function AppStoreProvider({ children, onAuthError }) {
       async saveStay(stay) {
         const res = await api.saveStay(stay).catch(handleError)
         removePhotos(res.removedPaths)
+        const saved = { ...res.stay, stayType: res.stay.stayType ?? '' }
         apply((s) => {
-          const exists = s.stays.some((x) => x.id === res.stay.id)
+          const exists = s.stays.some((x) => x.id === saved.id)
           return {
             ...s,
-            stays: exists ? s.stays.map((x) => (x.id === res.stay.id ? res.stay : x)) : [res.stay, ...s.stays],
+            stays: exists ? s.stays.map((x) => (x.id === saved.id ? saved : x)) : [saved, ...s.stays],
           }
         })
-        return res.stay
+        return saved
       },
       getDeleteImpact: (stayId) => api.stayDeleteImpact(stayId).catch(handleError),
       async deleteStay(stayId) {

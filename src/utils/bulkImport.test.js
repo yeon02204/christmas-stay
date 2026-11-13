@@ -200,3 +200,17 @@ describe('일괄 등록: 저장과 실패 처리', () => {
     expect(api.db.stays.size).toBe(2)
   })
 })
+
+describe('일괄 등록: 숙소 유형', () => {
+  it('한글 이름·영문 키·별칭을 받고, 없으면 미분류', () => {
+    const r = parseBulkInput(JSON.stringify({ stays: [
+      { name: 'a', stayType: '글램핑' }, { name: 'b', type: 'poolvilla' }, { name: 'c', stayType: '호텔' },
+      { name: 'd', stayType: '캠핑 장' }, { name: 'e' },
+    ] }))
+    expect(r.items.map((i) => i.stay.stayType)).toEqual(['glamping', 'poolvilla', 'hotel', 'camping', ''])
+    expect(r.items.every((i) => i.errors.length === 0)).toBe(true)
+  })
+  it('알 수 없는 유형은 오류', () => {
+    expect(parse1({ name: 'x', stayType: '모텔' }).errors.join()).toMatch(/stayType: "모텔" 는 알 수 없는 값/)
+  })
+})
