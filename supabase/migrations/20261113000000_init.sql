@@ -10,7 +10,9 @@
 --  · 찜/평가/비교 목록은 사용자별로 분리한다 (평가는 서로 조회만 가능).
 --  · members 테이블에 등록된 계정만 데이터에 접근할 수 있다.
 --    (회원가입이 실수로 열려 있어도 멤버가 아니면 아무것도 보이지 않는다)
---  · 실제 숙소 데이터는 넣지 않는다. 공동 일정 기본값(12/24~12/25)만 넣는다.
+--  · 실제 숙소 데이터는 넣지 않는다. 공동 일정 기본값(12/25~12/26)만 넣는다.
+--  · 테이블·함수 권한은 이 파일에서 명시적으로 부여한다
+--    ("Automatically expose new tables" 설정과 관계없이 같은 결과가 되도록).
 -- ════════════════════════════════════════════════════════════════════
 
 -- ───────────────────────── 멤버 ─────────────────────────
@@ -22,7 +24,7 @@ create table if not exists public.members (
 );
 
 create or replace function public.enforce_member_limit() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   if (select count(*) from public.members) >= 2 then
     raise exception 'MEMBER_LIMIT: 멤버는 최대 2명까지 등록할 수 있어' using errcode = 'P0001';
@@ -35,13 +37,14 @@ create trigger members_limit before insert on public.members
   for each row execute function public.enforce_member_limit();
 
 -- RLS 재귀를 피하기 위해 security definer 로 멤버 여부만 확인한다.
+-- security definer 함수는 search_path 를 비워 두고 모든 이름을 스키마까지 적는다 (이름 가로채기 방지).
 create or replace function public.is_member() returns boolean
-language sql stable security definer set search_path = public as $$
+language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.members where user_id = auth.uid())
 $$;
 
 create or replace function public._require_member() returns void
-language plpgsql stable security definer set search_path = public as $$
+language plpgsql stable security definer set search_path = '' as $$
 begin
   if auth.uid() is null or not exists (select 1 from public.members where user_id = auth.uid()) then
     raise exception 'NOT_MEMBER: 등록된 멤버만 사용할 수 있어' using errcode = '42501';
@@ -68,7 +71,7 @@ create table if not exists public.stays (
 );
 
 create or replace function public.valid_facilities(f jsonb) returns boolean
-language sql immutable as $$
+language sql immutable set search_path = '' as $$
   select jsonb_typeof(f) = 'object'
      and not exists (
        select 1 from jsonb_each_text(f) e
@@ -152,7 +155,7 @@ create table if not exists public.rate_extra_prices (
 );
 
 create or replace function public.check_rate_extra_same_room() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   if (select room_id from public.room_rates where id = new.rate_id)
      is distinct from (select room_id from public.room_extras where id = new.extra_id) then
@@ -174,8 +177,8 @@ create table if not exists public.trip_settings (
   constraint trip_range check (check_out > check_in and check_out - check_in <= 30)
 );
 insert into public.trip_settings (id, check_in, check_out)
-values (1, '2026-12-24', '2026-12-25')
-on conflict (id) do nothing;
+values (1, '2026-12-25', '2026-12-26')
+on conflict (id) do nothing;  -- 재실행 시 이미 정한 일정은 덮어쓰지 않는다
 
 -- ───────────────────────── 사용자별 데이터 ─────────────────────────
 
@@ -225,7 +228,7 @@ create table if not exists public.compare_extra_selections (
 -- ───────────────────────── updated_at 트리거 ─────────────────────────
 
 create or replace function public.touch_row() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   new.updated_at := now();
   new.updated_by := auth.uid();
@@ -301,10 +304,17 @@ create policy ratings_delete_own on public.ratings for delete to authenticated
   using (user_id = auth.uid() and public.is_member());
 
 -- 권한: anon 은 아무것도 못 하게, authenticated 는 RLS 범위 안에서만
-revoke all on all tables in schema public from anon;
-revoke all on all functions in schema public from anon, public;
+-- 프로젝트의 "Automatically expose new tables" 설정(기본 권한)에 기대지 않도록
+-- 먼저 전부 회수하고 필요한 것만 다시 부여한다. (TRUNCATE·REFERENCES·TRIGGER 는 부여하지 않음)
+revoke all on all tables in schema public from anon, authenticated;
+revoke all on all functions in schema public from anon, authenticated, public;
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
+-- members: 추가/삭제는 SQL Editor(관리자)에서만, 수정은 display_name 컬럼만 (user_id·created_at 변경 불가)
+revoke insert, update, delete on public.members from authenticated;
+grant update (display_name) on public.members to authenticated;
+-- trip_settings: 단일 행이라 수정만 허용
+revoke insert, delete on public.trip_settings from authenticated;
 
 -- ───────────────────────── Storage (숙소 사진) ─────────────────────────
 -- 공개(public) 버킷: 사진 URL 을 아는 사람은 볼 수 있지만, 업로드/삭제는 멤버만 가능.
@@ -333,7 +343,7 @@ create policy stay_photos_delete on storage.objects for delete to authenticated
 -- ═════════════════════════ RPC (security invoker → RLS 적용) ═════════════════════════
 
 create or replace function public._image_json(p_url text, p_path text) returns jsonb
-language sql immutable as $$
+language sql immutable set search_path = '' as $$
   select case
     when p_path is not null then jsonb_build_object('type', 'storage', 'path', p_path)
     when p_url is not null then jsonb_build_object('type', 'url', 'url', p_url)
@@ -341,7 +351,7 @@ language sql immutable as $$
 $$;
 
 create or replace function public._stay_json(s public.stays) returns jsonb
-language sql stable as $$
+language sql stable set search_path = '' as $$
   select jsonb_build_object(
     'id', s.id, 'name', s.name, 'region', s.region, 'address', s.address,
     'homepageUrl', s.homepage_url, 'coverImage', public._image_json(s.cover_url, s.cover_path),
@@ -447,14 +457,15 @@ begin
 end $$;
 
 create or replace function public.stay_delete_impact(p_stay_id uuid) returns jsonb
-language plpgsql stable security definer set search_path = public as $$
+language plpgsql stable security definer set search_path = '' as $$
 begin
   perform public._require_member();
+  -- 두 사람 합계를 보여 줘야 해서 definer 로 실행한다. 개수만 반환하고 내용은 반환하지 않는다.
   return jsonb_build_object(
-    'rooms', (select count(*) from rooms where stay_id = p_stay_id),
-    'favorites', (select count(*) from favorites f join rooms r on r.id = f.room_id where r.stay_id = p_stay_id),
-    'compares', (select count(*) from compare_items c join rooms r on r.id = c.room_id where r.stay_id = p_stay_id),
-    'ratings', (select count(*) from ratings g join rooms r on r.id = g.room_id where r.stay_id = p_stay_id));
+    'rooms', (select count(*) from public.rooms where stay_id = p_stay_id),
+    'favorites', (select count(*) from public.favorites f join public.rooms r on r.id = f.room_id where r.stay_id = p_stay_id),
+    'compares', (select count(*) from public.compare_items c join public.rooms r on r.id = c.room_id where r.stay_id = p_stay_id),
+    'ratings', (select count(*) from public.ratings g join public.rooms r on r.id = g.room_id where r.stay_id = p_stay_id));
 end $$;
 
 -- 숙소 삭제: 소속 객실·가격·찜·비교·평가는 FK cascade 로 함께 삭제된다.
@@ -544,17 +555,24 @@ begin
     from room_images where room_id = v_id and storage_path is not null;
 
   -- 추가금: 1단계 id 매핑 (클라이언트 임시 id → uuid)
+  --  · 이 객실에 이미 있는 추가금 uuid 는 그대로 유지한다 (날짜별 추가금·비교 선택이 그 id 를 참조).
+  --  · 다른 객실의 uuid 이거나, 같은 요청 안에서 중복된 id 면 새 uuid 를 만든다.
   for v_extra in select * from jsonb_array_elements(coalesce(p -> 'extras', '[]'::jsonb)) loop
     v_extra_id := case when v_extra ->> 'id' ~* uuid_re then (v_extra ->> 'id')::uuid end;
-    if v_extra_id is not null and exists (select 1 from room_extras where id = v_extra_id and room_id <> v_id) then
+    if v_extra_id is not null and (v_extra_id = any (v_keep)
+        or exists (select 1 from room_extras where id = v_extra_id and room_id <> v_id)) then
       v_extra_id := null;
     end if;
     v_extra_id := coalesce(v_extra_id, gen_random_uuid());
     v_map := v_map || jsonb_build_object(coalesce(v_extra ->> 'id', v_extra_id::text), v_extra_id::text);
     v_keep := v_keep || v_extra_id;
   end loop;
+  -- 요청에서 빠진 추가금만 삭제 (해당 추가금의 날짜별 금액·비교 선택은 FK cascade 로 함께 정리)
   delete from room_extras where room_id = v_id and not (id = any (v_keep));
-  -- 2단계 저장
+  -- 바비큐↔기타처럼 종류를 서로 바꿀 때 '객실당 바비큐/불멍 하나' 인덱스에 잠깐 걸리지 않도록
+  -- 남는 추가금의 종류를 먼저 custom 으로 돌려 둔 뒤 아래에서 최종 종류로 저장한다.
+  update room_extras set kind = 'custom' where room_id = v_id and kind <> 'custom';
+  -- 2단계 저장 (기존 id 는 on conflict 로 갱신 → id 유지)
   v_idx := 0;
   for v_extra in select * from jsonb_array_elements(coalesce(p -> 'extras', '[]'::jsonb)) loop
     v_extra_id := v_keep[v_idx + 1];
@@ -576,13 +594,18 @@ begin
       room_price = excluded.room_price, availability = excluded.availability, checked_at = excluded.checked_at
     returning id into v_rate_id;
     v_rate_keep := v_rate_keep || v_rate_id;
-    delete from rate_extra_prices where rate_id = v_rate_id;
-    for v_ep_key, v_ep_val in select * from jsonb_each(coalesce(v_rate -> 'extraPrices', '{}'::jsonb)) loop
-      if jsonb_typeof(v_ep_val) = 'number' and v_map ? v_ep_key then
-        insert into rate_extra_prices (rate_id, extra_id, price)
-        values (v_rate_id, (v_map ->> v_ep_key)::uuid, (v_ep_val #>> '{}')::int);
-      end if;
-    end loop;
+    -- 날짜별 추가금: 요청에 extraPrices 가 있을 때만 그 내용으로 교체한다.
+    -- (extraPrices 키 자체가 없으면 기존 날짜별 금액을 그대로 둔다 → 의도치 않은 삭제 방지)
+    if jsonb_typeof(v_rate -> 'extraPrices') = 'object' then
+      delete from rate_extra_prices where rate_id = v_rate_id;
+      for v_ep_key, v_ep_val in select * from jsonb_each(v_rate -> 'extraPrices') loop
+        if jsonb_typeof(v_ep_val) = 'number' and v_map ? v_ep_key then
+          insert into rate_extra_prices (rate_id, extra_id, price)
+          values (v_rate_id, (v_map ->> v_ep_key)::uuid, (v_ep_val #>> '{}')::int)
+          on conflict (rate_id, extra_id) do update set price = excluded.price;
+        end if;
+      end loop;
+    end if;
   end loop;
   delete from room_rates where room_id = v_id and not (id = any (v_rate_keep));
 
@@ -794,7 +817,8 @@ begin
     'removedPaths', to_jsonb(v_old_paths));
 end $$;
 
-revoke all on all functions in schema public from anon, public;
+-- 함수 실행 권한: 전부 회수한 뒤 authenticated 에만 명시적으로 부여 (anon·PUBLIC 은 실행 불가)
+revoke all on all functions in schema public from anon, authenticated, public;
 grant execute on function
   public.is_member(), public.get_app_state(), public.save_stay(jsonb), public.stay_delete_impact(uuid),
   public.delete_stay(uuid), public.save_room(jsonb), public.delete_room(uuid),
