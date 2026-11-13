@@ -6,10 +6,12 @@ import StayCard from '../components/stay/StayCard.jsx'
 import { useDerived, useIsGuest, useStore } from '../store/AppStore.jsx'
 import { STAY_TYPE_LABEL, STAY_TYPES } from '../utils/models.js'
 import { lowestRoomPrice } from '../utils/price.js'
+import { stayCompleteness } from '../utils/completeness.js'
 
 const NONE = '__none__' // 지역 미입력 / 유형 미분류 칩
 
 const SORTS = {
+  rich: '정보 많은순',
   recent: '최근 등록순',
   priceAsc: '가격 낮은순',
   priceDesc: '가격 높은순',
@@ -22,7 +24,7 @@ export default function HomePage() {
   const [query, setQuery] = useState('')
   const [region, setRegion] = useState('') // '' = 전체, NONE = 지역 미입력
   const [stayType, setStayType] = useState('') // '' = 전체, NONE = 유형 미분류
-  const [sort, setSort] = useState('recent')
+  const [sort, setSort] = useState('rich') // 기본: 사진·가격 등 정보가 많은 숙소부터
   const [favOnly, setFavOnly] = useState(false)
 
   // 칩 필터 목록: 실제로 등록된 지역·유형만, 개수와 함께 (전체 숙소 기준)
@@ -54,7 +56,7 @@ export default function HomePage() {
     let items = state.stays.map((stay) => {
       const all = roomsByStay[stay.id] || []
       const rooms = favOnly ? all.filter((r) => favoriteIds.has(r.id)) : all
-      return { stay, rooms, price: lowestRoomPrice(rooms, key) }
+      return { stay, rooms, price: lowestRoomPrice(rooms, key), score: stayCompleteness(stay, all, key) }
     })
     if (q) items = items.filter((x) => x.stay.name.toLowerCase().includes(q))
     if (region) items = items.filter((x) => (x.stay.region.trim() || NONE) === region)
@@ -62,6 +64,7 @@ export default function HomePage() {
     if (favOnly) items = items.filter((x) => x.rooms.length > 0)
     const byRecent = (a, b) => (b.stay.createdAt || '').localeCompare(a.stay.createdAt || '')
     if (sort === 'recent') items.sort(byRecent)
+    else if (sort === 'rich') items.sort((a, b) => b.score - a.score || byRecent(a, b))
     else {
       // 가격 미입력 숙소는 정렬 방향과 관계없이 항상 뒤로
       items.sort((a, b) => {
@@ -157,7 +160,8 @@ export default function HomePage() {
             </div>
           )}
 
-          {sort !== 'recent' && <p className="-mt-2 text-xs text-muted">객실 최저 숙박비 기준 · 가격 미입력 숙소는 맨 뒤에 표시돼</p>}
+          {sort === 'rich' && <p className="-mt-2 text-xs text-muted">사진·숙박비·주소·시설 등 정보가 많이 채워진 숙소부터 보여 줘 · 사진 없는 숙소는 아래쪽</p>}
+          {sort.startsWith('price') && <p className="-mt-2 text-xs text-muted">객실 최저 숙박비 기준 · 가격 미입력 숙소는 맨 뒤에 표시돼</p>}
 
           {list.length === 0 ? (
             <EmptyState
